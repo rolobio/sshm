@@ -259,6 +259,7 @@ if __name__ == '__main__':
     else:
         stdin = None
 
+    failure = False
     results = sshm(args.servers, command, stdin)
     for success, handle, message in results:
         if success:
@@ -266,5 +267,10 @@ if __name__ == '__main__':
             print(handle.uri, str(message).strip())
         else:
             # Failure, we'll display these in a list at the end.
+            failure = True
             print('Failure:', handle.uri, message)
+
+    # Exit with non-zero when there is a failure
+    if failure:
+        sys.exit(1)
 
