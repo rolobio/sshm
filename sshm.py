@@ -9,8 +9,6 @@ import zmq
 
 
 DEFAULT_PORT = '22'
-REMOVE_SSH_INFO = re.compile(r'b"Warning: .+known hosts.\\r\\n')
-
 
 class SSHHandle(object):
 
@@ -47,7 +45,6 @@ class SSHHandle(object):
         if stdin:
             stdin.close()
 
-        stdout = REMOVE_SSH_INFO.sub('', stdout.decode())
         return stdout
 
 
@@ -102,10 +99,10 @@ class MethodResultsGatherer(object):
         try:
             method = getattr(instance, method_name)
             if type(args) in [list, tuple]:
-                returned = method(*args)
+                stdout = method(*args)
             else:
-                returned = method(args)
-            conn.send_pyobj((True, instance, returned))
+                stdout = method(args)
+            conn.send_pyobj((True, instance, stdout))
         except Exception as e:
             conn.send_pyobj((False, instance, e))
         finally:
@@ -127,8 +124,8 @@ class MethodResultsGatherer(object):
         results = []
         if not self.conn.closed:
             for ign in self.threads:
-                success, instance, returned = self.conn.recv_pyobj()
-                results.append((success, instance, returned))
+                success, instance, stdout = self.conn.recv_pyobj()
+                results.append((success, instance, stdout))
 
             # All messages have been received, join all threads
             for thread in self.threads:
@@ -167,7 +164,6 @@ def expand_ranges(to_expand):
             for i in range(int(x), int(y)+1):
                 nums.append(padding % i)
     return nums
-
 
 
 def create_uri(user, body, num, suffix, port):
@@ -244,6 +240,9 @@ if __name__ == '__main__':
 
         Verify which servers are accepting SSH connections:
             ./sshm example[1-5].com "exit"
+
+        Copy a file to several servers.  May not work for larger files.
+            cat some_file | ./sshm example[1-5].com "cat > some_file"
     '''
     )
     p.add_argument('servers')
