@@ -31,9 +31,7 @@ class SSHHandle(object):
             STDIN remotely.
         """
         proc = subprocess.Popen(
-            # Use /dev/null as the host key file, we don't want the new key added
-            # Don't check the new key before storing it in the key file (/dev/null)
-            ['ssh', '-o UserKnownHostsFile=~/.ssh/known_hosts', #'-o StrictHostKeyChecking no',
+            ['ssh', '-o UserKnownHostsFile=~/.ssh/known_hosts'
                 '-p', self.port, self.uri, command],
             stdin=stdin,
             stdout=subprocess.PIPE,
