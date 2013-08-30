@@ -31,8 +31,8 @@ class SSHHandle(object):
             STDIN remotely.
         """
         proc = subprocess.Popen(
-            ['ssh', '-o UserKnownHostsFile=~/.ssh/known_hosts'
-                '-p', self.port, self.uri, command],
+            ['ssh', '-o UserKnownHostsFile=~/.ssh/known_hosts',
+                self.uri, '-p', self.port, command],
             stdin=stdin,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,)
