@@ -43,7 +43,7 @@ class SSHHandle(object):
         if stdin:
             stdin.close()
 
-        return stdout
+        return stdout.decode()
 
 
 
@@ -261,7 +261,7 @@ if __name__ == '__main__':
     for success, handle, message in results:
         if success:
             # Success! Print it out as it is received
-            print(handle.uri, str(message).strip())
+            print(handle.uri, message)
         else:
             # Failure, we'll display these in a list at the end.
             failure = True

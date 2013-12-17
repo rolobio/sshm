@@ -180,6 +180,8 @@ class TestReal(unittest.TestCase):
             success, instance, results = results_list[0]
             self.assertEqual(True, success)
             self.assertEqual('hello', results)
+            # We expect a utf-8 string as output
+            self.assertIsInstance(results, str)
         except: raise
         finally:
             fh.close()
