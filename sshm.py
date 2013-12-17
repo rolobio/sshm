@@ -222,6 +222,18 @@ def sshm(servers, command, stdin=None):
     return t.get_results()
 
 
+def pad_output(message):
+    """
+    If a message contains multiple lines, preceed it with a newline.
+    """
+    if isinstance(message, Exception):
+        return str(message)
+    else:
+        if '\n' in message:
+            return '\n'+message
+        return message
+
+
 
 if __name__ == '__main__':
     import select
@@ -261,11 +273,11 @@ if __name__ == '__main__':
     for success, handle, message in results:
         if success:
             # Success! Print it out as it is received
-            print(handle.uri, message)
+            print(handle.uri, pad_output(message))
         else:
             # Failure, we'll display these in a list at the end.
             failure = True
-            print('Failure:', handle.uri, message)
+            print('Failure:', handle.uri, pad_output(message))
 
     # Exit with non-zero when there is a failure
     if failure:

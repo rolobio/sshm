@@ -137,6 +137,25 @@ class TestRegexFuncs(unittest.TestCase):
                 self.assertEqual(expected_port, port)
 
 
+class Testpad_output(unittest.TestCase):
+
+    def test_singleline(self):
+        message = 'single line'
+        self.assertEqual(message, pad_output(message))
+
+
+    def test_multiline(self):
+        message = '''multi
+        line'''
+        self.assertEqual('\n'+message, pad_output(message))
+
+    def test_exeption(self):
+        contents = 'some error'
+        message = Exception(contents)
+        self.assertEqual(contents, pad_output(message))
+
+
+
 class TestReal(unittest.TestCase):
     """
     You must be able to login to your own machine for these tests to work.
