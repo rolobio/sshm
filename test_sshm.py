@@ -129,27 +129,27 @@ class TestRegexFuncs(unittest.TestCase):
             output = expand_servers(servers_str)
             assert len(output) == len(expected_list), \
                 'Expected is not a long as output. Add more to the test.'
-            for uri, expected in zip(output, expected_list):
-                uri, port = uri
+            for uri_port, expected in zip(output, expected_list):
+                uri, port = uri_port
                 expected_uri, expected_port = expected
 
                 self.assertEqual(expected_uri, uri)
                 self.assertEqual(expected_port, port)
 
 
-class Testpad_output(unittest.TestCase):
+class TestFuncs(unittest.TestCase):
 
-    def test_singleline(self):
+    def test_pad_ouput_singleline(self):
         message = 'single line'
         self.assertEqual(message, pad_output(message))
 
 
-    def test_multiline(self):
+    def test_pad_ouput_multiline(self):
         message = '''multi
         line'''
         self.assertEqual('\n'+message, pad_output(message))
 
-    def test_exeption(self):
+    def test_pad_ouput_exeption(self):
         contents = 'some error'
         message = Exception(contents)
         self.assertEqual(contents, pad_output(message))
