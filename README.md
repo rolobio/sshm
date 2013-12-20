@@ -1,5 +1,6 @@
 sshm
 ====
+[![Build Status](https://travis-ci.org/rolobio/sshm.png?branch=master)](https://travis-ci.org/rolobio/sshm)
 
 SSH Multiple. SSH into multiple machines and execute a single command.
 
