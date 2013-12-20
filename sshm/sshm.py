@@ -261,12 +261,10 @@ def pad_output(message):
         return message
 
 
-
-if __name__ == '__main__':
-    import select
-    p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-        description='''
-    SSH Multi. SSH into multiple machines at once.
+# This is the official version of sshm
+__version__ = '0.8'
+__long_description__ = '''
+    SSH Multi v%s. SSH into multiple machines at once.
 
     Examples:
         Get a count of processes on each server:
@@ -280,8 +278,14 @@ if __name__ == '__main__':
 
         Copy a file to several servers.  May not work for larger files.
             cat some_file | ./sshm example[1-5].com "cat > some_file"
-    '''
-    )
+    ''' % (__version__)
+
+
+
+if __name__ == '__main__':
+    import select
+    p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=long_description)
     p.add_argument('servers')
     p.add_argument('command', nargs='+')
     args = p.parse_args()
