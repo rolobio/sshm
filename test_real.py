@@ -1,8 +1,10 @@
 #! /usr/bin/env python3
 from sshm import *
 
+import os
+import os.path
+import tempfile
 import unittest
-
 
 class TestReal(unittest.TestCase):
     """
@@ -31,9 +33,6 @@ class TestReal(unittest.TestCase):
         """
         Simply login to the local machine and exit with a non-zero.
         """
-        import tempfile
-        import os
-
         # Create a temporary file to pass as stdin
         fh = tempfile.NamedTemporaryFile('w', delete=False)
         fh.write('hello')
@@ -45,14 +44,14 @@ class TestReal(unittest.TestCase):
         try:
             results_list = sshm('localhost', 'cat', stdin=fh)
             success, instance, message = results_list[0]
-            self.assertTrue(success)
+            self.assertTrue(success, 'sshm was not successful')
             self.assertEqual('hello', message)
             # We expect a utf-8 string as output
             self.assertIsInstance(message, str)
         except: raise
         finally:
-            fh.close()
-            os.remove(fh.name)
+            if os.path.isfile(name):
+                os.remove(name)
 
 
     def test_localhost_multi(self):
@@ -74,10 +73,6 @@ class TestReal(unittest.TestCase):
         """
         Binary files are transfered correctly using STDIN.
         """
-        import tempfile
-        import os
-        from os.path import isfile
-
         fh = tempfile.NamedTemporaryFile('wb', delete=False)
         contents = os.urandom(10000)
         fh.write(contents)
@@ -91,9 +86,9 @@ class TestReal(unittest.TestCase):
         try:
             results_list = sshm('localhost', 'cat > %s' % tmp_file, stdin=fh)
             success, instance, results = results_list[0]
-            self.assertTrue(success)
+            self.assertTrue(success, results)
 
-            self.assertTrue(isfile(tmp_file))
+            self.assertTrue(os.path.isfile(tmp_file))
 
             # Read the contents of the copied file, make sure they are intact.
             with open(tmp_file, 'rb') as tfh:
@@ -101,9 +96,10 @@ class TestReal(unittest.TestCase):
 
         except: raise
         finally:
-            fh.close()
-            os.remove(fh.name)
-            os.remove(tmp_file)
+            if os.path.isfile(name):
+                os.remove(name)
+            if os.path.isfile(tmp_file):
+                os.remove(tmp_file)
 
 
 
