@@ -78,7 +78,7 @@ class MethodResultsGatherer(object):
         # Read the contents of STDIN and pass it to any thread that makes a
         # request.  Encode it to bytes.
         if stdin:
-            stdin_contents = stdin.buffer.read()
+            stdin_contents = stdin.read()
             stdin.close()
         self.stdin_url = 'inproc://stdin'
         stdin_conn = self.context.socket(zmq.REP)
@@ -284,7 +284,7 @@ __long_description__ = '''
 if __name__ == '__main__':
     import select
     p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=long_description)
+        description=__long_description__)
     p.add_argument('servers')
     p.add_argument('command', nargs='+')
     args = p.parse_args()
@@ -303,7 +303,7 @@ if __name__ == '__main__':
     for success, handle, message in results:
         if success:
             # Success! Print it out as it is received
-            print(handle.uri, pad_output(message))
+            print('%s: %s' % (handle.uri, pad_output(message)))
         else:
             # Failure, we'll display these in a list at the end.
             failure = True

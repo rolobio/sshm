@@ -55,7 +55,7 @@ class TestReal(unittest.TestCase):
 
     def test_localhost_stdin(self):
         """
-        Simply login to the local machine and exit with a non-zero.
+        Login to the local machine and pass a file object through stdin.
         """
         contents = b'hello'
         fh = self._get_temp_file(contents)
@@ -65,7 +65,7 @@ class TestReal(unittest.TestCase):
         self.assertTrue(success, message)
         self.assertEqual('hello', message)
         # We expect a utf-8 string as output
-        self.assertIsInstance(message, str)
+        self.assertIsInstance(message, unicode)
 
 
     def test_localhost_multi(self):
