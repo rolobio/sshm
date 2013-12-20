@@ -1,1 +1,1 @@
-from sshm import *
+from sshm.sshm import *

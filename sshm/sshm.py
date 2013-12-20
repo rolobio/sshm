@@ -78,7 +78,7 @@ class MethodResultsGatherer(object):
         # Read the contents of STDIN and pass it to any thread that makes a
         # request.  Encode it to bytes.
         if stdin:
-            stdin_contents = stdin.read()
+            stdin_contents = stdin.buffer.read()
             stdin.close()
         self.stdin_url = 'inproc://stdin'
         stdin_conn = self.context.socket(zmq.REP)
