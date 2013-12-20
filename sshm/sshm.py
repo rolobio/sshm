@@ -8,7 +8,6 @@ import tempfile
 import threading
 import zmq
 
-
 DEFAULT_PORT = '22'
 
 class SSHHandle(object):

@@ -1,15 +1,25 @@
 #! /usr/bin/env python3
-from sshm import *
+from sshm.sshm import *
 
 import os
 import os.path
 import tempfile
 import unittest
 
+# Skip the real tests if travis-ci.org is running the tests
+try:
+    os.environ['CI']
+    skip_if_ci = 'travis-ci.org is running these tests'
+except KeyError:
+    skip_if_ci = ''
+
+
 class TestReal(unittest.TestCase):
     """
     You must be able to login to your own machine for these tests to work.
     """
+
+    skip = skip_if_ci
 
     def _get_temp_file(self, contents):
         """
@@ -91,7 +101,6 @@ class TestReal(unittest.TestCase):
         # Read the contents of the copied file, make sure they are intact.
         with open(tfh.name, 'rb') as tfh:
             self.assertEqual(tfh.read(), contents)
-
 
 
 
