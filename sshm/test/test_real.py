@@ -13,7 +13,7 @@ try:
 except KeyError:
     skip_if_ci = ''
 
-
+@unittest.skipIf('CI' in os.environ.keys(), 'Travis-CI is running these tests.')
 class TestReal(unittest.TestCase):
     """
     You must be able to login to your own machine for these tests to work.
