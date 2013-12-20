@@ -1,13 +1,29 @@
 #! /usr/bin/env python3
 from sshm import *
 
+import os
+import os.path
+import tempfile
 import unittest
-
 
 class TestReal(unittest.TestCase):
     """
     You must be able to login to your own machine for these tests to work.
     """
+
+    def _get_temp_file(self, contents):
+        """
+        Create a temporary file, write contents to it, and return a readable
+        tempfile handle.
+        """
+        fh = tempfile.NamedTemporaryFile('wb', delete=False)
+        name = fh.name
+        fh.write(contents)
+        fh.seek(0)
+        fh.close()
+        fh = open(name, 'r')
+        return fh
+
 
     def test_localhost(self):
         """
@@ -31,28 +47,15 @@ class TestReal(unittest.TestCase):
         """
         Simply login to the local machine and exit with a non-zero.
         """
-        import tempfile
-        import os
+        contents = b'hello'
+        fh = self._get_temp_file(contents)
 
-        # Create a temporary file to pass as stdin
-        fh = tempfile.NamedTemporaryFile('w', delete=False)
-        fh.write('hello')
-        fh.seek(0)
-        name = fh.name
-        fh.close()
-        fh = open(name, 'r')
-
-        try:
-            results_list = sshm('localhost', 'cat', stdin=fh)
-            success, instance, message = results_list[0]
-            self.assertTrue(success)
-            self.assertEqual('hello', message)
-            # We expect a utf-8 string as output
-            self.assertIsInstance(message, str)
-        except: raise
-        finally:
-            fh.close()
-            os.remove(fh.name)
+        results_list = sshm('localhost', 'cat', stdin=fh)
+        success, instance, message = results_list[0]
+        self.assertTrue(success, message)
+        self.assertEqual('hello', message)
+        # We expect a utf-8 string as output
+        self.assertIsInstance(message, str)
 
 
     def test_localhost_multi(self):
@@ -74,36 +77,21 @@ class TestReal(unittest.TestCase):
         """
         Binary files are transfered correctly using STDIN.
         """
-        import tempfile
-        import os
-        from os.path import isfile
-
-        fh = tempfile.NamedTemporaryFile('wb', delete=False)
         contents = os.urandom(10000)
-        fh.write(contents)
-        fh.seek(0)
-        name = fh.name
-        fh.close()
-        fh = open(name, 'r')
+        fh = self._get_temp_file(contents)
 
-        tmp_file = '/tmp/sshm_test'
+        tfh = tempfile.NamedTemporaryFile()
 
-        try:
-            results_list = sshm('localhost', 'cat > %s' % tmp_file, stdin=fh)
-            success, instance, results = results_list[0]
-            self.assertTrue(success)
+        results_list = sshm('localhost', 'cat > %s' % tfh.name, stdin=fh)
+        success, instance, results = results_list[0]
+        self.assertTrue(success, results)
 
-            self.assertTrue(isfile(tmp_file))
+        self.assertTrue(os.path.isfile(tfh.name))
 
-            # Read the contents of the copied file, make sure they are intact.
-            with open(tmp_file, 'rb') as tfh:
-                self.assertEqual(tfh.read(), contents)
+        # Read the contents of the copied file, make sure they are intact.
+        with open(tfh.name, 'rb') as tfh:
+            self.assertEqual(tfh.read(), contents)
 
-        except: raise
-        finally:
-            fh.close()
-            os.remove(fh.name)
-            os.remove(tmp_file)
 
 
 

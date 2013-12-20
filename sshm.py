@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import argparse
+import io
 import re
 import subprocess
 import sys
@@ -26,22 +27,21 @@ class SSHHandle(object):
         @type command: str
         @param command: Execute this one the remote server.
 
-        @type stdin: file
-        @param stdin: Pass this file handle to the ssh connection. Will be seen as
-            STDIN remotely.
+        @type stdin: bytes
+        @param stdin: Pass these contents to ssh.
         """
-        proc = subprocess.Popen(
-            ['ssh', '-o UserKnownHostsFile=~/.ssh/known_hosts',
-                self.uri, '-p', self.port, command],
-            stdin=stdin,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,)
-        stdout, stderr = proc.communicate()
-        if proc.returncode != 0:
-            raise Exception(stderr)
-
-        if stdin:
-            stdin.close()
+        try:
+            proc = subprocess.Popen(
+                ['ssh', '-o UserKnownHostsFile=~/.ssh/known_hosts',
+                    self.uri, '-p', self.port, command],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,)
+            stdout, stderr = proc.communicate(input=stdin)
+            if proc.returncode != 0:
+                raise Exception(stderr)
+        except:
+            raise
 
         return stdout.decode()
 
@@ -49,7 +49,7 @@ class SSHHandle(object):
 
 class MethodResultsGatherer(object):
 
-    def __init__(self, instances, method_name, args):
+    def __init__(self, instances, method_name, args, kwargs, stdin=None):
         """
         Execute the method named "method_name" on all instances with the arguements in args.
 
@@ -59,51 +59,90 @@ class MethodResultsGatherer(object):
         @type method_name: str
         @param method_name: Will be executed on each instance.
 
-        @type args: tuple or list
-        @param args: If args is a tuple, that tuple will be passed to each
-            thread. If args is a list, that list will be popped into each
-            thread in reverse order. (Start to end)
-        """
-        if type(args) == list:
-            # There must be an argument tuple for each instance.
-            assert len(args) == len(instances)
-            # Reverse the list so the arguments will be popped in order for each
-            # instance.
-            args = args[::-1]
+        @type args: tuple
+        @param args: Arguments that will be passed to the method when called.
 
+        @type kwargs: dict
+        @param kwargs: A dictionary of keyword agruments that will be passed to
+            the method when called.
+
+        @type stdin: file
+        @param stdin: A file containing data that will be passed to each ssh
+            handle.
+        """
         # Create the ZMQ connection
         self.context = zmq.Context()
         self.url = 'inproc://method_results_gatherer'
         self.conn = self.context.socket(zmq.PULL)
         self.conn.bind(self.url)
 
+        # Read the contents of STDIN and pass it to any thread that makes a
+        # request.  Encode it to bytes.
+        if stdin:
+            stdin_contents = stdin.buffer.read()
+            stdin.close()
+        self.stdin_url = 'inproc://stdin'
+        stdin_conn = self.context.socket(zmq.REP)
+        stdin_conn.bind(self.stdin_url)
+
         self.threads = []
+        if_stdin = True if stdin else False
         for instance in instances:
-            if type(args) != list:
-                thread = threading.Thread(target=self._wrapper, args=(instance, method_name, args))
-            else:
-                thread = threading.Thread(target=self._wrapper, args=(instance, method_name, args.pop()))
+            thread = threading.Thread(target=self._wrapper, args=(instance, method_name, if_stdin, args, kwargs))
             thread.start()
             self.threads.append(thread)
 
+        # Respond to any requests for STDIN, when all threads report done, close
+        finished_thread_count = 0
+        while True:
+            message = stdin_conn.recv_unicode()
 
-    def _wrapper(self, instance, method_name, args):
+            if message == 'done':
+                # Tell the thread to close
+                stdin_conn.send_unicode('close')
+
+                finished_thread_count += 1
+                if finished_thread_count == len(self.threads):
+                    # All threads have completed, exit
+                    break
+            elif message == 'stdin':
+                # Thread requests stdin contents, send it
+                stdin_conn.send_pyobj(stdin_contents)
+
+        stdin_conn.close()
+
+
+
+    def _wrapper(self, instance, method_name, stdin, args, kwargs={}):
         """
         I perform a method and report what the method returns.
         """
         conn = self.context.socket(zmq.PUSH)
         conn.connect(self.url)
 
+        stdin_conn = self.context.socket(zmq.REQ)
+        stdin_conn.connect(self.stdin_url)
+
+        if stdin:
+            stdin_conn.send_unicode('stdin')
+            message = stdin_conn.recv_pyobj()
+            kwargs['stdin'] = message
+
         try:
             method = getattr(instance, method_name)
             if type(args) in [list, tuple]:
-                stdout = method(*args)
+                stdout = method(*args, **kwargs)
             else:
-                stdout = method(args)
+                stdout = method(args, **kwargs)
             conn.send_pyobj((True, instance, stdout))
         except Exception as e:
             conn.send_pyobj((False, instance, e))
         finally:
+            # Send "done", throw away reply, close
+            stdin_conn.send_unicode('done')
+            stdin_conn.recv()
+
+            stdin_conn.close()
             conn.close()
 
 
@@ -202,23 +241,11 @@ def expand_servers(server_list):
 def sshm(servers, command, stdin=None):
     """
     SSH into multiple servers and execute "command". Pass stdin to these ssh
-    connections.
+    handles.
     """
     handles = [SSHHandle(*u) for u in expand_servers(servers)]
 
-    if stdin:
-        # STDIN is provided, make a copy of it for each machine
-        stdin = stdin.read()
-        fhs = []
-        for ign in handles:
-            fh = tempfile.NamedTemporaryFile('w')
-            fh.write(stdin)
-            fh.seek(0)
-            fhs.append(fh)
-        t = MethodResultsGatherer(handles, 'execute', [(command, fh) for fh in fhs])
-    else:
-        # No STDIN. We'll just execute the command.
-        t = MethodResultsGatherer(handles, 'execute', command)
+    t = MethodResultsGatherer(handles, 'execute', command, stdin=stdin, kwargs={})
     return t.get_results()
 
 
