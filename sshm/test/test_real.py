@@ -66,7 +66,7 @@ class TestReal(unittest.TestCase):
         self.assertEqual('hello', message)
         # We expect a unicode string.  Get the type of unicode string to avoid
         # python renaming issues.
-        self.assertIsInstance(message, type(u'')
+        self.assertIsInstance(message, type(u''))
 
 
     def test_localhost_multi(self):
