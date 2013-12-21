@@ -6,6 +6,7 @@ import os.path
 import tempfile
 import unittest
 
+@unittest.skipIf('CI' in os.environ.keys(), 'Travis-CI is running these tests.')
 class TestReal(unittest.TestCase):
     """
     You must be able to login to your own machine for these tests to work.
@@ -45,7 +46,7 @@ class TestReal(unittest.TestCase):
 
     def test_localhost_stdin(self):
         """
-        Simply login to the local machine and exit with a non-zero.
+        Login to the local machine and pass a file object through stdin.
         """
         contents = b'hello'
         fh = self._get_temp_file(contents)
@@ -54,8 +55,9 @@ class TestReal(unittest.TestCase):
         success, instance, message = results_list[0]
         self.assertTrue(success, message)
         self.assertEqual('hello', message)
-        # We expect a utf-8 string as output
-        self.assertIsInstance(message, str)
+        # We expect a unicode string.  Get the type of unicode string to avoid
+        # python renaming issues.
+        self.assertIsInstance(message, type(u''))
 
 
     def test_localhost_multi(self):
@@ -91,7 +93,6 @@ class TestReal(unittest.TestCase):
         # Read the contents of the copied file, make sure they are intact.
         with open(tfh.name, 'rb') as tfh:
             self.assertEqual(tfh.read(), contents)
-
 
 
 

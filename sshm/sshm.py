@@ -4,10 +4,10 @@ import io
 import re
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import threading
 import zmq
-
 
 DEFAULT_PORT = '22'
 
@@ -79,7 +79,10 @@ class MethodResultsGatherer(object):
         # Read the contents of STDIN and pass it to any thread that makes a
         # request.  Encode it to bytes.
         if stdin:
-            stdin_contents = stdin.buffer.read()
+            if sysconfig.get_python_version() == '2.7':
+                stdin_contents = stdin.read()
+            else:
+                stdin_contents = stdin.buffer.read()
             stdin.close()
         self.stdin_url = 'inproc://stdin'
         stdin_conn = self.context.socket(zmq.REP)
@@ -161,8 +164,8 @@ class MethodResultsGatherer(object):
         results = []
         if not self.conn.closed:
             for ign in self.threads:
-                success, instance, stdout = self.conn.recv_pyobj()
-                results.append((success, instance, stdout))
+                success, instance, message = self.conn.recv_pyobj()
+                results.append((success, instance, message))
 
             # All messages have been received, join all threads
             for thread in self.threads:
@@ -261,27 +264,12 @@ def pad_output(message):
         return message
 
 
-
 if __name__ == '__main__':
     import select
+    from sshm import __version__, __long_description__
+
     p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-        description='''
-    SSH Multi. SSH into multiple machines at once.
-
-    Examples:
-        Get a count of processes on each server:
-            ./sshm example1.com,example2.com,example3.com,mail[01-05].example.com,host[01-25].org "ps aux | wc -l"
-
-        Check if postfix is running on mail servers:
-            ./sshm mail[01-03].example.com "postfix status"
-
-        Verify which servers are accepting SSH connections:
-            ./sshm example[1-5].com "exit"
-
-        Copy a file to several servers.  May not work for larger files.
-            cat some_file | ./sshm example[1-5].com "cat > some_file"
-    '''
-    )
+        description=__long_description__)
     p.add_argument('servers')
     p.add_argument('command', nargs='+')
     args = p.parse_args()
@@ -300,7 +288,7 @@ if __name__ == '__main__':
     for success, handle, message in results:
         if success:
             # Success! Print it out as it is received
-            print(handle.uri, pad_output(message))
+            print('%s: %s' % (handle.uri, pad_output(message)))
         else:
             # Failure, we'll display these in a list at the end.
             failure = True
