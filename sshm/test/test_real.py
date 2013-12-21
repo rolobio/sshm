@@ -6,13 +6,6 @@ import os.path
 import tempfile
 import unittest
 
-# Skip the real tests if travis-ci.org is running the tests
-try:
-    os.environ['CI']
-    skip_if_ci = 'travis-ci.org is running these tests'
-except KeyError:
-    skip_if_ci = ''
-
 @unittest.skipIf('CI' in os.environ.keys(), 'Travis-CI is running these tests.')
 class TestReal(unittest.TestCase):
     """
