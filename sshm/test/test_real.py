@@ -64,8 +64,9 @@ class TestReal(unittest.TestCase):
         success, instance, message = results_list[0]
         self.assertTrue(success, message)
         self.assertEqual('hello', message)
-        # We expect a utf-8 string as output
-        self.assertIsInstance(message, str)
+        # We expect a unicode string.  Get the type of unicode string to avoid
+        # python renaming issues.
+        self.assertIsInstance(message, type(u'')
 
 
     def test_localhost_multi(self):
