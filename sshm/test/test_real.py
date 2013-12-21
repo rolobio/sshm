@@ -12,8 +12,6 @@ class TestReal(unittest.TestCase):
     You must be able to login to your own machine for these tests to work.
     """
 
-    skip = skip_if_ci
-
     def _get_temp_file(self, contents):
         """
         Create a temporary file, write contents to it, and return a readable
