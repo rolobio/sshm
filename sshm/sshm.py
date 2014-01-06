@@ -266,7 +266,7 @@ def pad_output(message):
 
 if __name__ == '__main__':
     import select
-    from sshm import __version__, __long_description__
+    from _info import __version__, __long_description__
 
     p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
         description=__long_description__)
@@ -287,12 +287,10 @@ if __name__ == '__main__':
     results = sshm(args.servers, command, stdin)
     for success, handle, message in results:
         if success:
-            # Success! Print it out as it is received
-            print('%s: %s' % (handle.uri, pad_output(message)))
+            print('sshm: %s: %s' % (handle.uri, pad_output(message)))
         else:
-            # Failure, we'll display these in a list at the end.
             failure = True
-            print('Failure:', handle.uri, pad_output(message))
+            print('sshm: Failure:', handle.uri, pad_output(message))
 
     # Exit with non-zero when there is a failure
     if failure:
