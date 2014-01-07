@@ -262,17 +262,46 @@ def pad_output(message):
         return message
 
 
-if __name__ == '__main__':
-    import select
+def python26_args():
+    import optparse
     from _info import __version__, __long_description__
+    p = optparse.OptionParser(version=__version__)
+    p.add_option('servers')
+    p.add_option('command')
+    options, args = p.parse_args()
+
+    command = ' '.join(args)
+    return (options, command)
+
+
+def python27_args():
+    from _info import __version__, __long_description__
+    import argparse
 
     p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
         description=__long_description__)
     p.add_argument('servers')
     p.add_argument('command', nargs='+')
     args = p.parse_args()
-
     command = ' '.join(args.command)
+    return (args, command)
+
+
+def main():
+    try:
+        from sshm import sshm, pad_output
+    except ImportError:
+        from sys import exit
+        print('You must install sshm before you can use it! "python setup.py install"')
+        exit(1)
+
+    import select
+    import sys
+    try:
+        args, command = python27_args()
+    except ImportError:
+        # Python2.6 doesn't have argparse
+        args, command = python26_args()
 
     # Only provided stdin if there is data
     r_list, w_list, x_list = select.select([sys.stdin], [], [], 0)
@@ -293,4 +322,8 @@ if __name__ == '__main__':
     # Exit with non-zero when there is a failure
     if failure:
         sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()
 
