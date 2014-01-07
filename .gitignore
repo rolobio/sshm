@@ -7,6 +7,7 @@
 *.egg
 *.egg-info
 dist
+bin
 build
 eggs
 parts
