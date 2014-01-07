@@ -1,10 +1,10 @@
-import sysconfig
+import sys
 
-python_version = sysconfig.get_python_version()
-if python_version[0] == '2':
+if sys.version_info[:1] <= (2, 7):
     from sshm import *
     from _info import *
-elif python_version[0] == '3':
+else:
+    # Python 3
     from sshm.sshm import *
     from sshm._info import *
 

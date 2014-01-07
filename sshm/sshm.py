@@ -1,10 +1,8 @@
 #! /usr/bin/env python3
-import argparse
 import io
 import re
 import subprocess
 import sys
-import sysconfig
 import tempfile
 import threading
 import zmq
@@ -79,7 +77,7 @@ class MethodResultsGatherer(object):
         # Read the contents of STDIN and pass it to any thread that makes a
         # request.  Encode it to bytes.
         if stdin:
-            if sysconfig.get_python_version() == '2.7':
+            if sys.version_info[:1] <= (2, 7):
                 stdin_contents = stdin.read()
             else:
                 stdin_contents = stdin.buffer.read()
