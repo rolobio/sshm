@@ -55,9 +55,12 @@ class TestReal(unittest.TestCase):
         success, instance, message = results_list[0]
         self.assertTrue(success, message)
         self.assertEqual('hello', message)
-        # We expect a unicode string.  Get the type of unicode string to avoid
-        # python renaming issues.
-        self.assertIsInstance(message, type(u''))
+        # We expect a unicode string.  Python3.x's strings are unicode.
+        import sys
+        if sys.version_info[:1] <= (2, 7):
+            self.assertIsInstance(message, unicode)
+        else:
+            self.assertIsInstance(message, str)
 
 
     def test_localhost_multi(self):
