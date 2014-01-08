@@ -10,3 +10,5 @@ script:
   - "python setup.py test"
     # install sshm
   - "python setup.py install"
+    # sshm should be available on console
+  - "sshm --help"

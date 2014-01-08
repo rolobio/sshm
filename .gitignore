@@ -7,10 +7,10 @@
 *.egg
 *.egg-info
 dist
+bin
 build
 eggs
 parts
-bin
 var
 sdist
 develop-eggs

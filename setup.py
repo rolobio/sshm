@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 import os
 from setuptools import setup
 from sshm._info import __version__, __long_description__
@@ -16,7 +15,7 @@ config = {
         'sshm',
         ],
     'long_description':__long_description__,
-    'install_requires':[
+    'install_requires': [
         'pyzmq',
         ],
     'classifiers':[
@@ -25,6 +24,11 @@ config = {
         "License :: OSI Approved :: GNU License",
         ],
     'test_suite':'sshm.test.suite',
+    'entry_points':{
+        'console_scripts': [
+            'sshm = sshm:main'
+            ]
+        },
     }
 
 setup(**config)
