@@ -55,7 +55,8 @@ class MethodResultsGatherer(object):
 
     def __init__(self, instances, method_name, args, kwargs, stdin=None):
         """
-        Execute the method named "method_name" on all instances with the arguments in args.
+        Execute the method named "method_name" on all instances with the
+        arguments in args.
 
         @type instances: list
         @param instances: The instances whose methods will be executed.
@@ -96,7 +97,8 @@ class MethodResultsGatherer(object):
         self.threads = []
         if_stdin = True if stdin else False
         for instance in instances:
-            thread = threading.Thread(target=self._wrapper, args=(instance, method_name, if_stdin, args, kwargs))
+            thread = threading.Thread(target=self._wrapper,
+                    args=(instance, method_name, if_stdin, args, kwargs))
             thread.start()
             self.threads.append(thread)
 
@@ -312,8 +314,9 @@ def get_argparse_args(args=None):
         from sshm._info import __version__, __long_description__
     import argparse
 
-    p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=__long_description__)
+    p = argparse.ArgumentParser(
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=__long_description__)
     p.add_argument('servers')
     p.add_argument('command')
     args, extra_args = p.parse_known_args(args=args)
