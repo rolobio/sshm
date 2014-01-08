@@ -21,7 +21,7 @@ config = {
     'classifiers':[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
-        "License :: OSI Approved :: GNU License",
+        "License :: OSI Approved :: GNU General Public License (GPL)"
         ],
     'test_suite':'sshm.test.suite',
     'entry_points':{
