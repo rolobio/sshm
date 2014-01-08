@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-from sshm import *
+from sshm.sshm import *
 
 import os
 import os.path
@@ -98,7 +98,4 @@ class TestReal(unittest.TestCase):
             self.assertEqual(tfh.read(), contents)
 
 
-
-if __name__ == '__main__':
-    unittest.main()
 

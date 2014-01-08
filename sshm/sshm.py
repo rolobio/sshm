@@ -291,13 +291,6 @@ def get_argparse_args():
 
 
 def main():
-    try:
-        from sshm import sshm, pad_output
-    except ImportError:
-        from sys import exit
-        print('You must install sshm before you can use it! "python setup.py install"')
-        exit(1)
-
     import select
     if sys.version_info[:2] == (2, 6):
         # Python2.6 doesn't have argparse
