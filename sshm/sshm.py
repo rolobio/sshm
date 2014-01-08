@@ -262,7 +262,7 @@ def pad_output(message):
         return message
 
 
-def python26_args():
+def get_optparse_args():
     import optparse
     from _info import __version__, __long_description__
     p = optparse.OptionParser(version=__version__)
@@ -274,8 +274,11 @@ def python26_args():
     return (options, command)
 
 
-def python27_args():
-    from _info import __version__, __long_description__
+def get_argparse_args():
+    if sys.version_info[:2] == (2, 7):
+        from _info import __version__, __long_description__
+    else:
+        from sshm._info import __version__, __long_description__
     import argparse
 
     p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -296,12 +299,11 @@ def main():
         exit(1)
 
     import select
-    import sys
-    try:
-        args, command = python27_args()
-    except ImportError:
+    if sys.version_info[:2] == (2, 6):
         # Python2.6 doesn't have argparse
-        args, command = python26_args()
+        args, command = get_optparse_args()
+    else:
+        args, command = get_argparse_args()
 
     # Only provided stdin if there is data
     r_list, w_list, x_list = select.select([sys.stdin], [], [], 0)
