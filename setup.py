@@ -26,7 +26,7 @@ config = {
     'test_suite':'sshm.test.suite',
     'entry_points':{
         'console_scripts': [
-            'sshm = sshm:main'
+            'sshm = sshm.sshm:main'
             ]
         },
     }
