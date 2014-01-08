@@ -7,17 +7,16 @@ import tempfile
 import threading
 import zmq
 
-DEFAULT_PORT = '22'
-
 class SSHHandle(object):
 
     def __init__(self, uri, port):
         self.uri = uri
         self.port = port
 
-    def execute(self, command, stdin=None):
+
+    def execute(self, command, stdin=None, extra_arguments=None):
         """
-        Perform an SSH command, pass it this script's STDIN.
+        Perform an SSH command, pass it stdin.
 
         @type uri: str
         @param uri: The URI used to connect to a sepecific server.
@@ -28,18 +27,25 @@ class SSHHandle(object):
         @type stdin: bytes
         @param stdin: Pass these contents to ssh.
         """
-        try:
-            proc = subprocess.Popen(
-                ['ssh', '-o UserKnownHostsFile=~/.ssh/known_hosts',
-                    self.uri, '-p', self.port, command],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,)
-            stdout, stderr = proc.communicate(input=stdin)
-            if proc.returncode != 0:
-                raise Exception(stderr)
-        except:
-            raise
+        cmd = ['ssh',]
+        # Add extra arguments after ssh, but before the uri and command
+        if extra_arguments:
+            cmd.extend(extra_arguments)
+        # Only change the port at the user's request.  Otherwise, use SSH's
+        # default port.
+        if self.port:
+            cmd.extend([self.uri, '-p', self.port, command])
+        else:
+            cmd.extend([self.uri, command])
+
+        # Run the command, return its results
+        proc = subprocess.Popen(cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,)
+        stdout, stderr = proc.communicate(input=stdin)
+        if proc.returncode != 0:
+            raise Exception(stderr)
 
         return stdout.decode()
 
@@ -49,7 +55,8 @@ class MethodResultsGatherer(object):
 
     def __init__(self, instances, method_name, args, kwargs, stdin=None):
         """
-        Execute the method named "method_name" on all instances with the arguements in args.
+        Execute the method named "method_name" on all instances with the
+        arguments in args.
 
         @type instances: list
         @param instances: The instances whose methods will be executed.
@@ -74,8 +81,8 @@ class MethodResultsGatherer(object):
         self.conn = self.context.socket(zmq.PULL)
         self.conn.bind(self.url)
 
-        # Read the contents of STDIN and pass it to any thread that makes a
-        # request.  Encode it to bytes.
+        # Read the contents of STDIN. This will be passed to any thread that
+        # makes a request.
         if stdin:
             if sys.version_info[:1] <= (2, 7):
                 stdin_contents = stdin.read()
@@ -86,16 +93,18 @@ class MethodResultsGatherer(object):
         stdin_conn = self.context.socket(zmq.REP)
         stdin_conn.bind(self.stdin_url)
 
+        # Create the threads that will run each ssh connection
         self.threads = []
         if_stdin = True if stdin else False
         for instance in instances:
-            thread = threading.Thread(target=self._wrapper, args=(instance, method_name, if_stdin, args, kwargs))
+            thread = threading.Thread(target=self._wrapper,
+                    args=(instance, method_name, if_stdin, args, kwargs))
             thread.start()
             self.threads.append(thread)
 
         # Respond to any requests for STDIN, when all threads report done, close
         finished_thread_count = 0
-        while True:
+        while finished_thread_count < len(self.threads):
             message = stdin_conn.recv_unicode()
 
             if message == 'done':
@@ -103,9 +112,6 @@ class MethodResultsGatherer(object):
                 stdin_conn.send_unicode('close')
 
                 finished_thread_count += 1
-                if finished_thread_count == len(self.threads):
-                    # All threads have completed, exit
-                    break
             elif message == 'stdin':
                 # Thread requests stdin contents, send it
                 stdin_conn.send_pyobj(stdin_contents)
@@ -205,12 +211,19 @@ def expand_ranges(to_expand):
 
 
 def create_uri(user, body, num, suffix, port):
+    """
+    Use the provided parameters to create a URI.  Port will be passed
+    as the second object in the returned tuple.
+
+    @rtype: tuple
+        Example: ('user@host3', '22')
+    """
     uri = ''
     if user: uri += user+'@'
     uri += body
     uri += num
     uri += suffix
-    return (uri, port or DEFAULT_PORT)
+    return (uri, port)
 
 
 EXTRACT_URIS = re.compile(r'([@\w._:-]+(?:\[[\d,-]+\])?(?:[@\w._:-]+)?)(?:,|$)')
@@ -239,14 +252,37 @@ def expand_servers(server_list):
 
 
 
-def sshm(servers, command, stdin=None):
+def sshm(servers, command, extra_arguments=None, stdin=None):
     """
     SSH into multiple servers and execute "command". Pass stdin to these ssh
     handles.
+
+    @param servers: A string containing the servers to execute "command" on via
+        SSH.
+        Examples:
+            example.com
+            example[1-3].com
+            mail[1,3,8].example.com
+    @type servers: str
+
+    @param command: A string containing the command to execute.
+    @type command: str
+
+    @param extra_arguments: These arguments will be passed directly to each SSH
+        subprocess instance.
+    @type extra_arguments: list
+
+    @param stdin: A file object that will be passed to each subproccess
+        instance.
+    @type stdin: file
+
+    @returns: A list containing (success, handle, message) from each method
+        call.
     """
     handles = [SSHHandle(*u) for u in expand_servers(servers)]
 
-    t = MethodResultsGatherer(handles, 'execute', command, stdin=stdin, kwargs={})
+    t = MethodResultsGatherer(handles, 'execute', command, stdin=stdin,
+            kwargs={'extra_arguments':extra_arguments or None,})
     return t.get_results()
 
 
@@ -262,41 +298,39 @@ def pad_output(message):
         return message
 
 
-def get_optparse_args():
-    import optparse
-    from _info import __version__, __long_description__
-    p = optparse.OptionParser(version=__version__)
-    p.add_option('servers')
-    p.add_option('command')
-    options, args = p.parse_args()
+def get_argparse_args(args=None):
+    """
+    Get the arguments passed to this script when it was run.
 
-    command = ' '.join(args)
-    return (options, command)
+    @param args: A list of arguments passed in the console.
+    @type args: list
 
-
-def get_argparse_args():
+    @returns: A tuple containing (args, command, extra_args)
+    @rtype: tuple
+    """
     if sys.version_info[:2] == (2, 7):
         from _info import __version__, __long_description__
     else:
         from sshm._info import __version__, __long_description__
     import argparse
 
-    p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=__long_description__)
+    p = argparse.ArgumentParser(
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=__long_description__)
     p.add_argument('servers')
-    p.add_argument('command', nargs='+')
-    args = p.parse_args()
-    command = ' '.join(args.command)
-    return (args, command)
+    p.add_argument('command')
+    args, extra_args = p.parse_known_args(args=args)
+    return (args, args.command, extra_args)
 
 
 def main():
+    """
+    Run SSHM using console provided arguments.
+
+    This should only be run using a console!
+    """
     import select
-    if sys.version_info[:2] == (2, 6):
-        # Python2.6 doesn't have argparse
-        args, command = get_optparse_args()
-    else:
-        args, command = get_argparse_args()
+    args, command, extra_arguments = get_argparse_args()
 
     # Only provided stdin if there is data
     r_list, w_list, x_list = select.select([sys.stdin], [], [], 0)
@@ -305,14 +339,15 @@ def main():
     else:
         stdin = None
 
+    # Perform the command on each server, print the results to stdout.
     failure = False
-    results = sshm(args.servers, command, stdin)
+    results = sshm(args.servers, command, extra_arguments, stdin)
     for success, handle, message in results:
         if success:
             print('sshm: %s: %s' % (handle.uri, pad_output(message)))
         else:
             failure = True
-            print('sshm: Failure:', handle.uri, pad_output(message))
+            print('sshm: Failure: %s %s ' % (handle.uri, pad_output(message)))
 
     # Exit with non-zero when there is a failure
     if failure:

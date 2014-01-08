@@ -95,35 +95,52 @@ class TestRegexFuncs(unittest.TestCase):
     def test_expand_servers(self):
         tests = [
             ('example.com',
-                [('example.com', '22')],
-            ),
+                [('example.com', '')],
+                ),
             ('mail.example.com',
-                [('mail.example.com', '22')],
-            ),
+                [('mail.example.com', '')],
+                ),
             ('example.com,mail.example.com',
-                [('example.com', '22'),
-                ('mail.example.com', '22')
+                [('example.com', ''),
+                ('mail.example.com', '')
                 ],
-            ),
+                ),
             ('mail.exa_mple3.com',
-                [('mail.exa_mple3.com', '22')],
-            ),
+                [('mail.exa_mple3.com', '')],
+                ),
             ('mail[1-3].example.com',
-                [('mail1.example.com', '22'),
-                ('mail2.example.com', '22'),
-                ('mail3.example.com', '22'),
+                [('mail1.example.com', ''),
+                ('mail2.example.com', ''),
+                ('mail3.example.com', ''),
                 ],
-            ),
+                ),
             ('mail[1-3].example.com,example[5-7,9].com',
-                [('mail1.example.com', '22'),
-                ('mail2.example.com', '22'),
-                ('mail3.example.com', '22'),
-                ('example5.com', '22'),
-                ('example6.com', '22'),
-                ('example7.com', '22'),
-                ('example9.com', '22'),
+                [('mail1.example.com', ''),
+                ('mail2.example.com', ''),
+                ('mail3.example.com', ''),
+                ('example5.com', ''),
+                ('example6.com', ''),
+                ('example7.com', ''),
+                ('example9.com', ''),
                 ],
-            ),
+                ),
+            (
+                'example[1-3].com:123',
+                [
+                    ('example1.com', '123'),
+                    ('example2.com', '123'),
+                    ('example3.com', '123'),
+                    ],
+                ),
+            (
+                'example[1-3].com:123,mail1.example.com:789',
+                [
+                    ('example1.com', '123'),
+                    ('example2.com', '123'),
+                    ('example3.com', '123'),
+                    ('mail1.example.com', '789'),
+                    ],
+                ),
         ]
         for servers_str, expected_list in tests:
             output = expand_servers(servers_str)
@@ -153,6 +170,34 @@ class TestFuncs(unittest.TestCase):
         contents = 'some error'
         message = Exception(contents)
         self.assertEqual(contents, pad_output(message))
+
+    def test_get_argparse_args(self):
+        # Valid
+        provided = ['example.com', 'ls']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, 'example.com')
+        self.assertEqual(command, 'ls')
+        self.assertEqual(extra_args, [])
+
+        # Valid
+        provided = ['example[1-3].com', 'exit']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, 'example[1-3].com')
+        self.assertEqual(command, 'exit')
+        self.assertEqual(extra_args, [])
+
+        # Lack of required arguments
+        provided = ['example.com']
+        self.assertRaises(SystemExit, get_argparse_args, provided)
+        provided = []
+        self.assertRaises(SystemExit, get_argparse_args, provided)
+
+        # Extra arguments
+        provided = ['example[1-3].com', 'exit', '-o UserKnownHostsFile=/dev/null']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, 'example[1-3].com')
+        self.assertEqual(command, 'exit')
+        self.assertEqual(extra_args, [provided[2],])
 
 
 
