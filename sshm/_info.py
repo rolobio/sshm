@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 # This is the official version of sshm
-__version__ = '0.8'
+__version__ = '0.8.3'
 
 __long_description__ = '''
     SSH Multi v%s. SSH into multiple machines at once.
@@ -19,7 +19,7 @@ __long_description__ = '''
         Copy a file to several servers.  May not work for larger files.
             cat some_file | sshm example[1-5].com "cat > some_file"
 
-        Specify a port for each server:
+        Specify a per-host port:
             sshm example1.com:123,example2.com,example4.com:78 "exit"
     ''' % (__version__)
 
