@@ -16,7 +16,7 @@ class SSHHandle(object):
 
     def execute(self, command, stdin=None, extra_arguments=None):
         """
-        Perform an SSH command, pass it this script's STDIN.
+        Perform an SSH command, pass it stdin.
 
         @type uri: str
         @param uri: The URI used to connect to a sepecific server.
