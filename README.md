@@ -1,6 +1,9 @@
 sshm
 ====
 [![Build Status](https://travis-ci.org/rolobio/sshm.png?branch=master)](https://travis-ci.org/rolobio/sshm)
+[![Version](https://pypip.in/v/sshm/badge.png)](https://pypi.python.org/pypi/sshm/)
+[![Egg Status](https://pypip.in/egg/sshm/badge.png)](https://pypi.python.org/pypi/sshm/)
+[![Downloads](https://pypip.in/d/sshm/badge.png?period=month)](https://pypi.python.org/pypi/sshm/)
 
 SSH Multiple. SSH into multiple machines and execute a single command.
 
