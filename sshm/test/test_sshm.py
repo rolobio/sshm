@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-from sshm import *
+from sshm.sshm import *
 
 import unittest
 
@@ -156,5 +156,3 @@ class TestFuncs(unittest.TestCase):
 
 
 
-if __name__ == '__main__':
-    unittest.main()
