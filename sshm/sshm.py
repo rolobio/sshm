@@ -79,8 +79,8 @@ class MethodResultsGatherer(object):
         self.conn = self.context.socket(zmq.PULL)
         self.conn.bind(self.url)
 
-        # Read the contents of STDIN and pass it to any thread that makes a
-        # request.  Encode it to bytes.
+        # Read the contents of STDIN. This will be passed to any thread that
+        # makes a request.
         if stdin:
             if sys.version_info[:1] <= (2, 7):
                 stdin_contents = stdin.read()
@@ -91,6 +91,7 @@ class MethodResultsGatherer(object):
         stdin_conn = self.context.socket(zmq.REP)
         stdin_conn.bind(self.stdin_url)
 
+        # Create the threads that will run each ssh connection
         self.threads = []
         if_stdin = True if stdin else False
         for instance in instances:
@@ -100,7 +101,7 @@ class MethodResultsGatherer(object):
 
         # Respond to any requests for STDIN, when all threads report done, close
         finished_thread_count = 0
-        while True:
+        while finished_thread_count < len(self.threads):
             message = stdin_conn.recv_unicode()
 
             if message == 'done':
@@ -108,9 +109,6 @@ class MethodResultsGatherer(object):
                 stdin_conn.send_unicode('close')
 
                 finished_thread_count += 1
-                if finished_thread_count == len(self.threads):
-                    # All threads have completed, exit
-                    break
             elif message == 'stdin':
                 # Thread requests stdin contents, send it
                 stdin_conn.send_pyobj(stdin_contents)
@@ -210,6 +208,13 @@ def expand_ranges(to_expand):
 
 
 def create_uri(user, body, num, suffix, port):
+    """
+    Use the provided parameters to create a URI.  Port will be passed
+    as the second object in the returned tuple.
+
+    @rtype: tuple
+        Example: ('user@host3', '22')
+    """
     uri = ''
     if user: uri += user+'@'
     uri += body
@@ -315,6 +320,11 @@ def get_argparse_args(args=None):
 
 
 def main():
+    """
+    Run SSHM using console provided arguments.
+
+    This should only be run using a console!
+    """
     import select
     args, command, extra_arguments = get_argparse_args()
 
