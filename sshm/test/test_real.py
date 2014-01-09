@@ -31,8 +31,8 @@ class TestReal(unittest.TestCase):
         Simply login to the local machine and exit.
         """
         results_list = sshm('localhost', 'exit')
-        success, instance, results = results_list[0]
-        self.assertEqual(True, success)
+        result = results_list[0]
+        self.assertEqual(0, result['return_code'])
 
 
     def test_localhost_nonzero(self):
@@ -40,8 +40,8 @@ class TestReal(unittest.TestCase):
         Simply login to the local machine and exit with a non-zero.
         """
         results_list = sshm('localhost', 'exit 1')
-        success, instance, results = results_list[0]
-        self.assertEqual(False, success)
+        result = results_list[0]
+        self.assertEqual(1, result['return_code'])
 
 
     def test_localhost_stdin(self):
@@ -52,15 +52,15 @@ class TestReal(unittest.TestCase):
         fh = self._get_temp_file(contents)
 
         results_list = sshm('localhost', 'cat', stdin=fh)
-        success, instance, message = results_list[0]
-        self.assertTrue(success, message)
-        self.assertEqual('hello', message)
+        result = results_list[0]
+        self.assertEqual(result['return_code'], 0)
+        self.assertEqual('hello', result['stdout'])
         # We expect a unicode string.  Python3.x's strings are unicode.
         import sys
         if sys.version_info[:1] <= (2, 7):
-            self.assertIsInstance(message, unicode)
+            self.assertIsInstance(result['stdout'], unicode)
         else:
-            self.assertIsInstance(message, str)
+            self.assertIsInstance(result['stdout'], str)
 
 
     def test_localhost_multi(self):
@@ -71,11 +71,11 @@ class TestReal(unittest.TestCase):
         results_list = sshm('localhost,localhost,localhost', 'echo testing')
 
         # Verify all instances are unique
-        assert len(set([i for ign, i, ign in results_list])) == 3
+        assert len(set([r['instance'] for r in results_list])) == 3
 
-        for success, instance, results in results_list:
-            self.assertEqual(True, success)
-            self.assertEqual('testing\n', results)
+        for result in results_list:
+            self.assertEqual(0, result['return_code'])
+            self.assertEqual('testing\n', result['stdout'])
 
 
     def test_binary_copy(self):
@@ -88,8 +88,8 @@ class TestReal(unittest.TestCase):
         tfh = tempfile.NamedTemporaryFile()
 
         results_list = sshm('localhost', 'cat > %s' % tfh.name, stdin=fh)
-        success, instance, results = results_list[0]
-        self.assertTrue(success, results)
+        result = results_list[0]
+        self.assertEqual(0, result['return_code'])
 
         self.assertTrue(os.path.isfile(tfh.name))
 

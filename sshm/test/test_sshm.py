@@ -156,21 +156,6 @@ class TestRegexFuncs(unittest.TestCase):
 
 class TestFuncs(unittest.TestCase):
 
-    def test_pad_output_singleline(self):
-        message = 'single line'
-        self.assertEqual(message, pad_output(message))
-
-
-    def test_pad_output_multiline(self):
-        message = '''multi
-        line'''
-        self.assertEqual('\n'+message, pad_output(message))
-
-    def test_pad_output_exeption(self):
-        contents = 'some error'
-        message = Exception(contents)
-        self.assertEqual(contents, pad_output(message))
-
     def test_get_argparse_args(self):
         # Valid
         provided = ['example.com', 'ls']
