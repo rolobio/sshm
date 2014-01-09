@@ -1,14 +1,16 @@
-sshm
-====
+# SSHM
+## About
 [![Build Status](https://travis-ci.org/rolobio/sshm.png?branch=master)](https://travis-ci.org/rolobio/sshm)
 [![Version](https://pypip.in/v/sshm/badge.png)](https://pypi.python.org/pypi/sshm/)
 [![Egg Status](https://pypip.in/egg/sshm/badge.png)](https://pypi.python.org/pypi/sshm/)
 [![Downloads](https://pypip.in/d/sshm/badge.png?period=month)](https://pypi.python.org/pypi/sshm/)
 [![License](https://pypip.in/license/sshm/badge.png)](https://gnu.org/licenses/gpl.html)
 
-SSH Multiple. SSH into multiple machines and execute a single command.
+SSH Multiple. SSH into multiple machines and execute a single command. Each ssh
+session will be executed at once in their own threads. Stdin will be copied to
+each session.
 
-# Installation
+## Installation
 Installation is simple:
 
     $ python setup.py install
@@ -24,7 +26,7 @@ or run it on your console:
     $ sshm example[01-40].com "exit"
 
 
-# Examples
+## Examples
 Get a count of processes on each server:
 
      $ sshm example1.com,example2.com,example3.com,mail[01-05].example.com,host[01-25].org "ps aux | wc -l"
