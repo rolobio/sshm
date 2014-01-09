@@ -11,11 +11,16 @@ session will be executed at once in their own threads. Stdin will be copied to
 each session.
 
 ## Installation
-Installation is simple:
+Manual installation is simple:
 
     $ python setup.py install
 
-You can now import directly from sshm:
+or, automatic installation:
+
+    $ pip install sshm
+
+## Examples
+Import directly from sshm:
 
 ```python
 from sshm.sshm import sshm
@@ -26,7 +31,6 @@ or run it on your console:
     $ sshm example[01-40].com "exit"
 
 
-## Examples
 Get a count of processes on each server:
 
      $ sshm example1.com,example2.com,example3.com,mail[01-05].example.com,host[01-25].org "ps aux | wc -l"
