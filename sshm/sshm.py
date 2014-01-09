@@ -7,6 +7,7 @@ import tempfile
 import threading
 import zmq
 
+
 class SSHHandle(object):
 
     def __init__(self, uri, port):
@@ -44,143 +45,148 @@ class SSHHandle(object):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,)
         stdout, stderr = proc.communicate(input=stdin)
-        if proc.returncode != 0:
-            raise Exception(stderr)
-
-        return stdout.decode()
-
-
-
-class MethodResultsGatherer(object):
-
-    def __init__(self, instances, method_name, args, kwargs, stdin=None):
-        """
-        Execute the method named "method_name" on all instances with the
-        arguments in args.
-
-        @type instances: list
-        @param instances: The instances whose methods will be executed.
-
-        @type method_name: str
-        @param method_name: Will be executed on each instance.
-
-        @type args: tuple
-        @param args: Arguments that will be passed to the method when called.
-
-        @type kwargs: dict
-        @param kwargs: A dictionary of keyword agruments that will be passed to
-            the method when called.
-
-        @type stdin: file
-        @param stdin: A file containing data that will be passed to each ssh
-            handle.
-        """
-        # Create the ZMQ connection
-        self.context = zmq.Context()
-        self.url = 'inproc://method_results_gatherer'
-        self.conn = self.context.socket(zmq.PULL)
-        self.conn.bind(self.url)
-
-        # Read the contents of STDIN. This will be passed to any thread that
-        # makes a request.
-        if stdin:
-            if sys.version_info[:1] <= (2, 7):
-                stdin_contents = stdin.read()
-            else:
-                stdin_contents = stdin.buffer.read()
-            stdin.close()
-        self.stdin_url = 'inproc://stdin'
-        stdin_conn = self.context.socket(zmq.REP)
-        stdin_conn.bind(self.stdin_url)
-
-        # Create the threads that will run each ssh connection
-        self.threads = []
-        if_stdin = True if stdin else False
-        for instance in instances:
-            thread = threading.Thread(target=self._wrapper,
-                    args=(instance, method_name, if_stdin, args, kwargs))
-            thread.start()
-            self.threads.append(thread)
-
-        # Respond to any requests for STDIN, when all threads report done, close
-        finished_thread_count = 0
-        while finished_thread_count < len(self.threads):
-            message = stdin_conn.recv_unicode()
-
-            if message == 'done':
-                # Tell the thread to close
-                stdin_conn.send_unicode('close')
-
-                finished_thread_count += 1
-            elif message == 'stdin':
-                # Thread requests stdin contents, send it
-                stdin_conn.send_pyobj(stdin_contents)
-
-        stdin_conn.close()
+        return {'return_code':proc.returncode,
+                'stdout':stdout.decode(),
+                'stderr':stderr.decode(),
+                }
 
 
 
-    def _wrapper(self, instance, method_name, stdin, args, kwargs={}):
+def method_results_gatherer(instances, method_name, args, kwargs, stdin=None):
+    """
+    Execute the method named "method_name" on all instances with the
+    arguments in args.
+
+    @type instances: list
+    @param instances: The instances whose methods will be executed.
+
+    @type method_name: str
+    @param method_name: Will be executed on each instance.
+
+    @type args: tuple
+    @param args: Arguments that will be passed to the method when called.
+
+    @type kwargs: dict
+    @param kwargs: A dictionary of keyword agruments that will be passed to
+        the method when called.
+
+    @type stdin: file
+    @param stdin: A file containing data that will be passed to each ssh
+        handle.
+
+    @rtype: list
+        Example:
+            [
+                {
+                    'instance': Instance01('example01.com'),
+                    'stdout': 'some stuff',
+                    'stderr': None,
+                    'return_code': 0,
+                },
+                {
+                    'instance': Instance02('example02.com'),
+                    'stdout': '',
+                    'stderr': 'other stuff',
+                    'return_code': 1,
+                },
+            ]
+    """
+    # Create the ZMQ connection
+    context = zmq.Context()
+    url = 'inproc://method_results_gatherer'
+    conn = context.socket(zmq.REP)
+    conn.bind(url)
+
+    def _wrapper(instance, method_name, stdin, args, kwargs={}):
         """
         I perform a method and report what the method returns.
         """
-        conn = self.context.socket(zmq.PUSH)
-        conn.connect(self.url)
-
-        stdin_conn = self.context.socket(zmq.REQ)
-        stdin_conn.connect(self.stdin_url)
+        conn = context.socket(zmq.REQ)
+        conn.connect(url)
 
         if stdin:
-            stdin_conn.send_unicode('stdin')
-            message = stdin_conn.recv_pyobj()
+            # STDIN is available, get it
+            conn.send_unicode('stdin')
+            message = conn.recv_pyobj()
             kwargs['stdin'] = message
 
         try:
+            # Get the method from the instance, run it with args
             method = getattr(instance, method_name)
             if type(args) in [list, tuple]:
-                stdout = method(*args, **kwargs)
+                result = method(*args, **kwargs)
             else:
-                stdout = method(args, **kwargs)
-            conn.send_pyobj((True, instance, stdout))
+                result = method(args, **kwargs)
+            # Attach the instance to the results
+            result['instance'] = instance
+            result['traceback'] = None
+            # Notify the main thread that the result is ready
+            conn.send_unicode('result')
+            # throw away its reply
+            conn.recv_unicode()
+            # Send the result
+            conn.send_pyobj(result)
         except Exception as e:
-            conn.send_pyobj((False, instance, e))
+            # Exception occured, result an error
+            conn.send_unicode('result')
+            # throw away its reply
+            conn.recv_unicode()
+            # Send the error result
+            conn.send_pyobj({
+                'instance':instance,
+                'stderr':e,
+                'traceback':'TODO',
+                'return_code': -1,
+                })
         finally:
-            # Send "done", throw away reply, close
-            stdin_conn.send_unicode('done')
-            stdin_conn.recv()
-
-            stdin_conn.close()
             conn.close()
 
 
-    def get_results(self):
-        """
-        Collect the results of the threads that were run. Each instance is in a
-        tuple with it's results. The first object in the tuple is True if the
-        method succeeded, False if an error occured.
-
-        Return example:
-            (
-                (True, Instance01('example01.com'), 'some stuff'),
-                (False, Instance02('example02.com'), 'other stuff'),
-            )
-        """
-        results = []
-        if not self.conn.closed:
-            for ign in self.threads:
-                success, instance, message = self.conn.recv_pyobj()
-                results.append((success, instance, message))
-
-            # All messages have been received, join all threads
-            for thread in self.threads:
-                thread.join()
-
-            self.conn.close()
-            self.context.term()
-
-            return results
+    # Read the contents of STDIN. This will be passed to any thread that
+    # makes a request.
+    # We cannot pass stdin via a parameter.
+    if stdin:
+        if sys.version_info[:1] <= (2, 7):
+            stdin_contents = stdin.read()
         else:
-            raise Exception('Messages have already been collected!')
+            stdin_contents = stdin.buffer.read()
+        stdin.close()
+
+    # Create the threads that will run each ssh connection
+    threads = []
+    if_stdin = True if stdin else False
+    for instance in instances:
+        thread = threading.Thread(target=_wrapper,
+                args=(instance, method_name, if_stdin, args, kwargs))
+        thread.start()
+        threads.append(thread)
+
+    # Respond to any requests for STDIN, gather all results and close
+    finished_thread_count = 0
+    results = []
+    while finished_thread_count < len(threads):
+        message = conn.recv_unicode()
+        if message == 'result':
+            # Thread has completed, get its result
+            conn.send_unicode('result')
+            # Get the results
+            results.append(conn.recv_pyobj())
+            # Thread closed
+            finished_thread_count += 1
+            # send close
+            conn.send_unicode('close')
+        elif message == 'stdin':
+            # Thread requests stdin contents, send it
+            conn.send_pyobj(stdin_contents)
+
+    # All threads have closed, join them!
+    for thread in threads:
+        thread.join()
+
+    conn.close()
+    context.term()
+
+    return results
 
 
 
@@ -230,10 +236,15 @@ EXTRACT_URIS = re.compile(r'([@\w._:-]+(?:\[[\d,-]+\])?(?:[@\w._:-]+)?)(?:,|$)')
 PARSE_URI = re.compile(r'(?:([\w._-]+)@)?(?:([\w._-]+)(?:\[([\d,-]+)\])?([\w._-]+)?)(?::([\d+]+))?$')
 def expand_servers(server_list):
     """
-    Create a URI string for each server in the list.
+    Create a URI tuple for each server in the list.
 
-        Example: 'example[3-5].com' to
-            ['example3.com', 'example4.com', 'example5.com']
+        Example: 'example[3-5].com,example7.com:245' to
+            [
+                ('example3.com', ''),
+                ('example4.com', ''),
+                ('example5.com' ''),
+                ('example7.com', '245'),
+            ]
     """
     uris = []
     for uri in EXTRACT_URIS.findall(server_list):
@@ -260,9 +271,9 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     @param servers: A string containing the servers to execute "command" on via
         SSH.
         Examples:
-            example.com
-            example[1-3].com
-            mail[1,3,8].example.com
+            'example.com'
+            'example[1-3].com'
+            'mail[1,3,8].example.com'
     @type servers: str
 
     @param command: A string containing the command to execute.
@@ -281,21 +292,9 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     """
     handles = [SSHHandle(*u) for u in expand_servers(servers)]
 
-    t = MethodResultsGatherer(handles, 'execute', command, stdin=stdin,
-            kwargs={'extra_arguments':extra_arguments or None,})
-    return t.get_results()
-
-
-def pad_output(message):
-    """
-    If a message contains multiple lines, preceed it with a newline.
-    """
-    if isinstance(message, Exception):
-        return str(message)
-    else:
-        if '\n' in message:
-            return '\n'+message
-        return message
+    results = method_results_gatherer(handles, 'execute', command, stdin=stdin,
+            kwargs={'extra_arguments':extra_arguments})
+    return results
 
 
 def get_argparse_args(args=None):
@@ -342,15 +341,19 @@ def main():
     # Perform the command on each server, print the results to stdout.
     failure = False
     results = sshm(args.servers, command, extra_arguments, stdin)
-    for success, handle, message in results:
-        if success:
-            print('sshm: %s: %s' % (handle.uri, pad_output(message)))
-        else:
-            failure = True
-            print('sshm: Failure: %s %s ' % (handle.uri, pad_output(message)))
+    for result in results:
+        print('sshm: %s%s(%d):' % (
+                'Failure: ' if result['return_code'] != '0' else '',
+                result['instance'].uri,
+                result['return_code'],
+                )
+            )
+        if result['traceback']: print(result['traceback'])
+        if result['stdout']: print(result['stdout'])
+        if result['stderr']: print(result['stderr'])
 
     # Exit with non-zero when there is a failure
-    if failure:
+    if sum([r['return_code'] for r in results]):
         sys.exit(1)
 
 
