@@ -189,7 +189,6 @@ def method_results_gatherer(instances, method_name, args, kwargs, stdin=None):
     return results
 
 
-
 MATCH_RANGES = re.compile(r'(?:(\d+)(?:,|$))|(?:(\d+-\d+))')
 def expand_ranges(to_expand):
     """
@@ -342,15 +341,21 @@ def main():
     failure = False
     results = sshm(args.servers, command, extra_arguments, stdin)
     for result in results:
-        print('sshm: %s%s(%d):' % (
+        out = ['sshm: %s%s(%d):' % (
                 'Failure: ' if result['return_code'] != 0 else '',
                 result['instance'].uri,
                 result['return_code'],
-                )
-            )
-        if result['traceback']: print(result['traceback'].strip('\n'))
-        if result['stdout']: print(result['stdout'].strip('\n'))
-        if result['stderr']: print(result['stderr'].strip('\n'))
+                ),]
+        if result['traceback']: out.append(result['traceback'].rstrip('\n'))
+        if result['stdout']: out.append(result['stdout'].rstrip('\n'))
+        if result['stderr']: out.append(result['stderr'].rstrip('\n'))
+        # Put output in one line if it can fit
+        if sum([s.count('\n') for s in out]) == 0 and len(out) <= 2:
+            print(' '.join(out))
+        else:
+            # Too many newlines, print everything out on its own line
+            for i in out:
+                print(i)
 
     # Exit with non-zero when there is a failure
     if sum([r['return_code'] for r in results]):
