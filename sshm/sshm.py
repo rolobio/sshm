@@ -343,14 +343,14 @@ def main():
     results = sshm(args.servers, command, extra_arguments, stdin)
     for result in results:
         print('sshm: %s%s(%d):' % (
-                'Failure: ' if result['return_code'] != '0' else '',
+                'Failure: ' if result['return_code'] != 0 else '',
                 result['instance'].uri,
                 result['return_code'],
                 )
             )
-        if result['traceback']: print(result['traceback'])
-        if result['stdout']: print(result['stdout'])
-        if result['stderr']: print(result['stderr'])
+        if result['traceback']: print(result['traceback'].strip('\n'))
+        if result['stdout']: print(result['stdout'].strip('\n'))
+        if result['stderr']: print(result['stderr'].strip('\n'))
 
     # Exit with non-zero when there is a failure
     if sum([r['return_code'] for r in results]):
