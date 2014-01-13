@@ -317,6 +317,7 @@ def get_argparse_args(args=None):
             description=__long_description__)
     p.add_argument('servers')
     p.add_argument('command')
+    p.add_argument('--version', action='version', version='%(prog)s '+__version__)
     args, extra_args = p.parse_known_args(args=args)
     return (args, args.command, extra_args)
 
