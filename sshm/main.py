@@ -1,6 +1,10 @@
 #! /usr/bin/env python3
-from lib import sshm
-from lib import get_argparse_args
+try:
+    from lib import sshm
+    from lib import get_argparse_args
+except ImportError:
+    from sshm.lib import sshm
+    from sshm.lib import get_argparse_args
 
 __all__ = ['SSHHandle', 'method_results_gatherer', 'sshm']
 
