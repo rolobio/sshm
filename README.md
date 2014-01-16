@@ -23,7 +23,7 @@ or, automatic installation:
 Import directly from sshm:
 
 ```python
-from sshm.sshm import sshm
+from sshm import sshm
 sshm('example[5,8].com', 'ls /dev/sd*')
 ```
 or run it on your console:
