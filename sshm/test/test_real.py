@@ -57,9 +57,9 @@ class TestReal(unittest.TestCase):
         self.assertEqual('hello', result['stdout'])
         # We expect a unicode string.  Python3.x's strings are unicode.
         import sys
-        if sys.version_info[:1] <= (2, 7):
+        try:
             self.assertIsInstance(result['stdout'], unicode)
-        else:
+        except NameError:
             self.assertIsInstance(result['stdout'], str)
 
 

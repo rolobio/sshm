@@ -306,9 +306,9 @@ def get_argparse_args(args=None):
     @returns: A tuple containing (args, command, extra_args)
     @rtype: tuple
     """
-    if sys.version_info[:2] == (2, 7):
+    try:
         from _info import __version__, __long_description__
-    else:
+    except ImportError:
         from sshm._info import __version__, __long_description__
     import argparse
 
