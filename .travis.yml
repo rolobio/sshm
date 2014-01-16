@@ -12,3 +12,5 @@ script:
   - "python setup.py install"
     # sshm should be available on console
   - "sshm --help"
+    # sshm should be avaliable in the python console
+  - "python -c 'from sshm import sshm'"
