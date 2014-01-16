@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
-from sshm.sshm import *
+from sshm.lib import (expand_servers, expand_ranges, PARSE_URI, EXTRACT_URIS,
+        get_argparse_args)
 
 import unittest
 
