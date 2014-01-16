@@ -6,6 +6,7 @@ import sys
 import tempfile
 import threading
 import zmq
+from traceback import format_exc
 
 __all__ = ['SSHHandle', 'method_results_gatherer', 'sshm']
 
@@ -137,7 +138,7 @@ def method_results_gatherer(instances, method_name, args, kwargs, stdin=None):
             conn.send_pyobj({
                 'instance':instance,
                 'stderr':e,
-                'traceback':'TODO',
+                'traceback':format_exc(),
                 'return_code': -1,
                 })
         finally:

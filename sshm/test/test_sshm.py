@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
-from sshm.lib import (expand_servers, expand_ranges, PARSE_URI, EXTRACT_URIS,
-        get_argparse_args)
+from sshm import lib
 
+from mock import MagicMock
 import unittest
 
 class TestRegex(unittest.TestCase):
@@ -29,7 +29,7 @@ class TestRegex(unittest.TestCase):
         ]
 
         for uris, expected in tests:
-            output = EXTRACT_URIS.findall(uris)
+            output = lib.EXTRACT_URIS.findall(uris)
             self.assertEqual(expected, output)
 
 
@@ -53,7 +53,7 @@ class TestRegex(unittest.TestCase):
         ]
 
         for uri, expected in tests:
-            output = PARSE_URI.match(uri).groups('')
+            output = lib.PARSE_URI.match(uri).groups('')
             self.assertEqual(expected, output)
 
 
@@ -89,7 +89,7 @@ class TestRegexFuncs(unittest.TestCase):
         ]
 
         for range_str, expected in tests:
-            output = expand_ranges(range_str)
+            output = lib.expand_ranges(range_str)
             self.assertEqual(expected, output)
 
 
@@ -144,7 +144,7 @@ class TestRegexFuncs(unittest.TestCase):
                 ),
         ]
         for servers_str, expected_list in tests:
-            output = expand_servers(servers_str)
+            output = lib.expand_servers(servers_str)
             assert len(output) == len(expected_list), \
                 'Expected is not a long as output. Add more to the test.'
             for uri_port, expected in zip(output, expected_list):
@@ -155,35 +155,50 @@ class TestRegexFuncs(unittest.TestCase):
                 self.assertEqual(expected_port, port)
 
 
+
 class TestFuncs(unittest.TestCase):
 
     def test_get_argparse_args(self):
         # Valid
         provided = ['example.com', 'ls']
-        args, command, extra_args = get_argparse_args(provided)
+        args, command, extra_args = lib.get_argparse_args(provided)
         self.assertEqual(args.servers, 'example.com')
         self.assertEqual(command, 'ls')
         self.assertEqual(extra_args, [])
 
         # Valid
         provided = ['example[1-3].com', 'exit']
-        args, command, extra_args = get_argparse_args(provided)
+        args, command, extra_args = lib.get_argparse_args(provided)
         self.assertEqual(args.servers, 'example[1-3].com')
         self.assertEqual(command, 'exit')
         self.assertEqual(extra_args, [])
 
         # Lack of required arguments
         provided = ['example.com']
-        self.assertRaises(SystemExit, get_argparse_args, provided)
+        self.assertRaises(SystemExit, lib.get_argparse_args, provided)
         provided = []
-        self.assertRaises(SystemExit, get_argparse_args, provided)
+        self.assertRaises(SystemExit, lib.get_argparse_args, provided)
 
         # Extra arguments
         provided = ['example[1-3].com', 'exit', '-o UserKnownHostsFile=/dev/null']
-        args, command, extra_args = get_argparse_args(provided)
+        args, command, extra_args = lib.get_argparse_args(provided)
         self.assertEqual(args.servers, 'example[1-3].com')
         self.assertEqual(command, 'exit')
         self.assertEqual(extra_args, [provided[2],])
 
 
+
+class Testmethod_results_gatherer(unittest.TestCase):
+
+    def test_traceback(self):
+        """
+        Traceback for a python error is reported in the returned dictionary.
+        """
+        mock = lib.SSHHandle.execute = MagicMock(
+                side_effect=Exception('oh noes!'))
+        handles = [lib.SSHHandle('uri', 'port'),]
+        results = lib.method_results_gatherer(handles, 'execute', [], {})
+        self.assertIn('traceback', results[0])
+        self.assertEqual('Exception: oh noes!',
+                results[0]['traceback'].strip().split('\n')[-1])
 
