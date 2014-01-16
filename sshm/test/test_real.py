@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-from sshm.lid import sshm
+from sshm.lib import sshm
 
 import os
 import os.path
