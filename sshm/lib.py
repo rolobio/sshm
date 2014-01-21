@@ -31,27 +31,6 @@ class SSHHandle(object):
         @type stdin: bytes
         @param stdin: Pass these contents to ssh.
         """
-        cmd = ['ssh',]
-        # Add extra arguments after ssh, but before the uri and command
-        if extra_arguments:
-            cmd.extend(extra_arguments)
-        # Only change the port at the user's request.  Otherwise, use SSH's
-        # default port.
-        if self.port:
-            cmd.extend([self.uri, '-p', self.port, command])
-        else:
-            cmd.extend([self.uri, command])
-
-        # Run the command, return its results
-        proc = subprocess.Popen(cmd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,)
-        stdout, stderr = proc.communicate(input=stdin)
-        return {'return_code':proc.returncode,
-                'stdout':stdout.decode(),
-                'stderr':stderr.decode(),
-                }
 
 
 
@@ -265,6 +244,61 @@ def expand_servers(server_list):
 
 
 
+def ssh(context, sink_url, stdin_url,
+        url, port, command, if_stdin, extra_arguments,
+        subprocess=subprocess
+        ):
+    # This is the basic report that we send back
+    report = {
+            'url':url,
+            'port':port,
+            }
+
+    if if_stdin:
+        # There is stdin, request it using ZMQ
+        sock = context.socket(zmq.REQ)
+        sock.connect(stdin_url)
+        sock.send_unicode('get stdin')
+        stdin = sock.recv_pyobj()
+    else:
+        stdin = None
+
+    try:
+        cmd = ['ssh',]
+        # Add extra arguments after ssh, but before the uri and command
+        if extra_arguments:
+            cmd.extend(extra_arguments)
+        # Only change the port at the user's request.  Otherwise, use SSH's
+        # default port.
+        if port:
+            cmd.extend([url, '-p', port, command])
+        else:
+            cmd.extend([url, command])
+
+        # Run the command, return its results
+        proc = subprocess.Popen(cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,)
+        stdout, stderr = proc.communicate(input=stdin)
+        report.update({'return_code':proc.returncode,
+                    'stdout':stdout.decode(),
+                    'stderr':stderr.decode(),
+                    }
+                )
+    except:
+        # Oops, report the traceback
+        report.update({
+                'traceback':format_exc(),
+                }
+            )
+
+    # Add the cmd to the report
+    report.update({'cmd':cmd,})
+    return report
+
+
+
 def sshm(servers, command, extra_arguments=None, stdin=None):
     """
     SSH into multiple servers and execute "command". Pass stdin to these ssh
@@ -293,10 +327,30 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
         call.
     """
     handles = [SSHHandle(*u) for u in expand_servers(servers)]
+    if_stdin = True if stdin else False
 
-    results = method_results_gatherer(handles, 'execute', command, stdin=stdin,
-            kwargs={'extra_arguments':extra_arguments})
-    return results
+    context = zmq.Context()
+    sink_url = 'inproc://sink'
+    sink = context.socket(zmq.PULL)
+    sink.bind(sink)
+
+    # Start each SSH connection in it's own thread
+    threads = []
+    for handle in handles:
+        thread = threading.Thread(target=get_results,
+                args=(instance, 'execute', if_stdin, (), {})
+                )
+        thread.start()
+        threads.append(thread)
+
+    # Listen for stdin requests and job reports
+    poller = zmq.Poller()
+    poller.register(ssh_receiver.socket, zmq.POLLIN)
+
+    while True:
+        sockets = dict(poller.poll())
+        if(ssh_receiver.socket in sockets) and (sockets[ssh_receiver.socket] == zmq.POLLIN):
+            ssh_receiver.recv()
 
 
 def get_argparse_args(args=None):

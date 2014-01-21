@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 from sshm import lib
 
-from mock import MagicMock
+from mock import MagicMock, call
 import unittest
 
 class TestRegex(unittest.TestCase):
@@ -188,17 +188,118 @@ class TestFuncs(unittest.TestCase):
 
 
 
-class Testmethod_results_gatherer(unittest.TestCase):
+#class Testsshm(unittest.TestCase):
+#
+#    def test_simple(self):
+#        """
+#        Test a simple mocked case of using sshm.
+#        """
+#        return_value = {
+#                'url':'example.com',
+#                'stdout':'hello',
+#                'exit_code':0,
+#                }
+#        lib.SSHHandle.execute = MagicMock(return_value=return_value)
+#
+#        # The command doesn't matter, the mocked ssh object will always
+#        # return the return_value dict.
+#        results = lib.sshm('example.com', 'foo')
+#        self.assertEqual([return_value,], results)
 
-    def test_traceback(self):
+
+
+class Test_ssh(unittest.TestCase):
+
+    def fake_subprocess(self, stdout, stderr, returncode):
+        proc = MagicMock()
+        proc.returncode = returncode
+        proc.communicate.return_value = (stdout, stderr)
+
+        sub = MagicMock()
+        sub.Popen.return_value = proc
+
+        return (sub, proc)
+
+
+    def fake_context(self):
+        context = MagicMock()
+        sock = MagicMock()
+        context.socket.return_value = sock
+        return context, sock
+
+
+    def test_simple(self):
         """
-        Traceback for a python error is reported in the returned dictionary.
+        Simpliest usage of ssh
         """
-        mock = lib.SSHHandle.execute = MagicMock(
-                side_effect=Exception('oh noes!'))
-        handles = [lib.SSHHandle('uri', 'port'),]
-        results = lib.method_results_gatherer(handles, 'execute', [], {})
-        self.assertIn('traceback', results[0])
-        self.assertEqual('Exception: oh noes!',
-                results[0]['traceback'].strip().split('\n')[-1])
+        sub, proc = self.fake_subprocess('STDOUT', 'STDERR', 0)
+
+        results = lib.ssh(None, None, None, 'url', None, 'command', False,
+                None, subprocess=sub)
+
+        # SSH command was constructed properly
+        self.assertTrue(sub.Popen.called)
+        self.assertEqual(sub.Popen.call_args[0],
+                (['ssh', 'url', 'command'],)
+                )
+
+        # communicate was called
+        self.assertTrue(proc.communicate.called)
+
+        # Compare the results
+        self.assertEqual(results,
+                {
+                    # Port is not present in command list
+                    'cmd':['ssh', 'url', 'command'],
+                    'port':None,
+                    'return_code':0,
+                    'stderr':u'STDERR',
+                    'stdout':u'STDOUT',
+                    'url':'url',
+                    }
+                )
+
+
+    def test_port(self):
+        """
+        Port is only added when requested.
+        """
+        sub, proc = self.fake_subprocess('STDOUT', 'STDERR', 0)
+
+        results = lib.ssh(None, None, None, 'url', 'PORT', 'command', False,
+                None, subprocess=sub)
+
+        self.assertEqual(results['cmd'],
+                ['ssh', 'url', '-p', 'PORT', 'command'],
+                )
+
+
+    def test_extra_arguments(self):
+        """
+        Extra arguments are passed to the ssh command in the correct place.
+        """
+        sub, proc = self.fake_subprocess('STDOUT', 'STDERR', 0)
+
+        results = lib.ssh(None, None, None, 'url', None, 'command', False,
+                ['-N', '-D'], subprocess=sub)
+
+        self.assertEqual(results['cmd'],
+                ['ssh', '-N', '-D', 'url', 'command'],
+                )
+
+
+    def test_stdin(self):
+        """
+        ssh command requests the stdin contents using ZMQ
+        """
+        sub, proc = self.fake_subprocess('STDOUT', 'STDERR', 0)
+        context, socket = self.fake_context()
+
+        results = lib.ssh(context, None, None, 'url', None, 'command', True,
+                None, subprocess=sub)
+
+        self.assertTrue(context.socket.connect.called)
+        self.assertTrue(context.socket.send_unicode.called)
+
+
 
