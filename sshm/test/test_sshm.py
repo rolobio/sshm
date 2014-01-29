@@ -219,11 +219,11 @@ class Test_sshm(unittest.TestCase):
         self.assertEqual(result,
                 {
                     'traceback':'',
-                    'stdout': u'',
+                    'stdout': '',
                     'url': 'example.com',
                     'cmd': ['ssh', 'example.com', 'exit'],
                     'return_code': 0,
-                    'stderr': u'',
+                    'stderr': '',
                     'port': ''
                     }
                 )
