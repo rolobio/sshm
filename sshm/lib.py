@@ -262,7 +262,7 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
             completed_threads += 1
             yield result
         elif (requests in sockets) and (sockets[requests] == zmq.POLLIN):
-            if requests.recv_unicode() == u'get stdin':
+            if requests.recv_unicode() == 'get stdin':
                 # A thread requests the contents of STDIN, send it
                 requests.send_pyobj(stdin_contents)
 
