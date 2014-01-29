@@ -8,7 +8,7 @@ import threading
 import zmq
 from traceback import format_exc
 
-__all__ = ['SSHHandle', 'method_results_gatherer', 'sshm']
+__all__ = ['ssh', 'sshm']
 
 
 MATCH_RANGES = re.compile(r'(?:(\d+)(?:,|$))|(?:(\d+-\d+))')
@@ -133,7 +133,7 @@ def ssh(context, sink_url, requests_url,
     try:
         cmd = ['ssh',]
         # Add extra arguments after ssh, but before the uri and command
-        cmd.extend(extra_arguments)
+        cmd.extend(extra_arguments or [])
         # Only change the port at the user's request.  Otherwise, use SSH's
         # default port.
         if port:
@@ -220,7 +220,7 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     requests.bind(request_url)
 
     # Start each SSH connection in it's own thread
-    threads = {}
+    threads = []
     for url, port in expand_servers(servers):
         thread = threading.Thread(target=ssh,
                 # Provide the arguments that ssh needs.
@@ -228,7 +228,7 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
                     url, port, command, extra_arguments)
                 )
         thread.start()
-        threads[url] = thread
+        threads.append(thread)
 
     # Listen for stdin requests and job results
     poller = zmq.Poller()
@@ -237,20 +237,22 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
 
     # While any thread is active, respond to any requests.
     # If a thread sends a result, clean it up.
-    while threads:
+    completed_threads = 0
+    while completed_threads != len(threads):
         sockets = dict(poller.poll())
         if (sink in sockets) and (sockets[sink] == zmq.POLLIN):
             # Got a result in the sink!
             result = sink.recv_pyobj()
-            # Clean up the thread
-            threads[result['url']].join()
-            del threads[result['url']]
-            # Yield the result
+            completed_threads += 1
             yield result
         elif (requests in sockets) and (sockets[requests] == zmq.POLLIN):
             if requests.recv_unicode() == u'get stdin':
                 # A thread requests the contents of STDIN, send it
                 requests.send_pyobj(stdin_contents)
+
+    # Cleanup threads
+    for thread in threads:
+        thread.join()
 
     sink.close()
     requests.close()
