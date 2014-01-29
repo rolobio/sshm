@@ -208,3 +208,38 @@ class Test_sshm(unittest.TestCase):
         return context, sock
 
 
+    def test_simple(self):
+        """
+        Test a simple sshm usage.
+        """
+        sub, proc = self.fake_subprocess('', '', 0)
+        lib.Popen = sub.Popen
+
+        result = list(lib.sshm('example.com', 'exit'))[0]
+        self.assertEqual(result,
+                {
+                    'traceback':'',
+                    'stdout': u'',
+                    'url': 'example.com',
+                    'cmd': ['ssh', 'example.com', 'exit'],
+                    'return_code': 0,
+                    'stderr': u'',
+                    'port': ''
+                    }
+                )
+
+
+    def test_triple(self):
+        """
+        You can SSH into three servers at once.
+        """
+        sub, proc = self.fake_subprocess('', '', 0)
+        lib.Popen = sub.Popen
+
+        results_list = list(lib.sshm('example[01-03].com', 'exit'))
+        for result in results_list:
+            self.assertIn(result['url'],
+                    ['example01.com', 'example02.com', 'example03.com']
+                    )
+
+

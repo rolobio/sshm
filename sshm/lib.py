@@ -83,10 +83,20 @@ def expand_servers(server_list):
     return uris
 
 
+def Popen(cmd, stdin, stdout, stderr):
+    """
+    Separating Popen call from ssh command for testing.
+    """
+    import subprocess
+    proc = subprocess.Popen(cmd,
+            stdin=stdin,
+            stdout=stdout,
+            stderr=stderr,)
+    return proc
+
 
 def ssh(context, sink_url, requests_url,
         url, port, command, extra_arguments,
-        subprocess=subprocess
         ):
     """
     Create an SSH connection to 'url' on port 'port'.  Execute 'command' and
@@ -109,8 +119,6 @@ def ssh(context, sink_url, requests_url,
 
     @param extra_arguments: Pass these extra arguments to the ssh call.
     @type extra_arguments: list
-
-    @param subprocess: Used only for testing
 
     @returns: None
     """
@@ -142,7 +150,7 @@ def ssh(context, sink_url, requests_url,
             cmd.extend([url, command])
 
         # Run the command, return its results
-        proc = subprocess.Popen(cmd,
+        proc = Popen(cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,)
