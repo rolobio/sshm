@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 from sshm import lib
 
-from mock import MagicMock
+from mock import MagicMock, call
 import unittest
 
 class TestRegex(unittest.TestCase):
@@ -188,17 +188,59 @@ class TestFuncs(unittest.TestCase):
 
 
 
-class Testmethod_results_gatherer(unittest.TestCase):
+class Test_sshm(unittest.TestCase):
 
-    def test_traceback(self):
+    def fake_subprocess(self, stdout, stderr, returncode):
+        proc = MagicMock()
+        proc.returncode = returncode
+        proc.communicate.return_value = (stdout, stderr)
+
+        sub = MagicMock()
+        sub.Popen.return_value = proc
+
+        return (sub, proc)
+
+
+    def fake_context(self):
+        context = MagicMock()
+        sock = MagicMock()
+        context.socket.return_value = sock
+        return context, sock
+
+
+    def test_simple(self):
         """
-        Traceback for a python error is reported in the returned dictionary.
+        Test a simple sshm usage.
         """
-        mock = lib.SSHHandle.execute = MagicMock(
-                side_effect=Exception('oh noes!'))
-        handles = [lib.SSHHandle('uri', 'port'),]
-        results = lib.method_results_gatherer(handles, 'execute', [], {})
-        self.assertIn('traceback', results[0])
-        self.assertEqual('Exception: oh noes!',
-                results[0]['traceback'].strip().split('\n')[-1])
+        sub, proc = self.fake_subprocess('', '', 0)
+        lib.Popen = sub.Popen
+
+        result = list(lib.sshm('example.com', 'exit'))[0]
+        self.assertEqual(result,
+                {
+                    'traceback':'',
+                    'stdout': '',
+                    'url': 'example.com',
+                    'cmd': ['ssh', 'example.com', 'exit'],
+                    'return_code': 0,
+                    'stderr': '',
+                    'port': ''
+                    }
+                )
+
+
+    def test_triple(self):
+        """
+        You can SSH into three servers at once.
+        """
+        sub, proc = self.fake_subprocess('', '', 0)
+        lib.Popen = sub.Popen
+
+        results_list = list(lib.sshm('example[01-03].com', 'exit'))
+        for result in results_list:
+            self.assertEqual('', result['traceback'])
+            self.assertIn(result['url'],
+                    ['example01.com', 'example02.com', 'example03.com']
+                    )
+
 

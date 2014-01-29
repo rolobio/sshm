@@ -8,188 +8,7 @@ import threading
 import zmq
 from traceback import format_exc
 
-__all__ = ['SSHHandle', 'method_results_gatherer', 'sshm']
-
-
-class SSHHandle(object):
-
-    def __init__(self, uri, port):
-        self.uri = uri
-        self.port = port
-
-
-    def execute(self, command, stdin=None, extra_arguments=None):
-        """
-        Perform an SSH command, pass it stdin.
-
-        @type uri: str
-        @param uri: The URI used to connect to a sepecific server.
-
-        @type command: str
-        @param command: Execute this one the remote server.
-
-        @type stdin: bytes
-        @param stdin: Pass these contents to ssh.
-        """
-        cmd = ['ssh',]
-        # Add extra arguments after ssh, but before the uri and command
-        if extra_arguments:
-            cmd.extend(extra_arguments)
-        # Only change the port at the user's request.  Otherwise, use SSH's
-        # default port.
-        if self.port:
-            cmd.extend([self.uri, '-p', self.port, command])
-        else:
-            cmd.extend([self.uri, command])
-
-        # Run the command, return its results
-        proc = subprocess.Popen(cmd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,)
-        stdout, stderr = proc.communicate(input=stdin)
-        return {'return_code':proc.returncode,
-                'stdout':stdout.decode(),
-                'stderr':stderr.decode(),
-                }
-
-
-
-def method_results_gatherer(instances, method_name, args, kwargs, stdin=None):
-    """
-    Execute the method named "method_name" on all instances with the
-    arguments in args.
-
-    @type instances: list
-    @param instances: The instances whose methods will be executed.
-
-    @type method_name: str
-    @param method_name: Will be executed on each instance.
-
-    @type args: tuple
-    @param args: Arguments that will be passed to the method when called.
-
-    @type kwargs: dict
-    @param kwargs: A dictionary of keyword agruments that will be passed to
-        the method when called.
-
-    @type stdin: file
-    @param stdin: A file containing data that will be passed to each ssh
-        handle.
-
-    @rtype: list
-        Example:
-            [
-                {
-                    'instance': Instance01('example01.com'),
-                    'stdout': 'some stuff',
-                    'stderr': None,
-                    'return_code': 0,
-                },
-                {
-                    'instance': Instance02('example02.com'),
-                    'stdout': '',
-                    'stderr': 'other stuff',
-                    'return_code': 1,
-                },
-            ]
-    """
-    # Create the ZMQ connection
-    context = zmq.Context()
-    url = 'inproc://method_results_gatherer'
-    conn = context.socket(zmq.REP)
-    conn.bind(url)
-
-    def _wrapper(instance, method_name, stdin, args, kwargs={}):
-        """
-        I perform a method and report what the method returns.
-        """
-        conn = context.socket(zmq.REQ)
-        conn.connect(url)
-
-        if stdin:
-            # STDIN is available, get it
-            conn.send_unicode('stdin')
-            message = conn.recv_pyobj()
-            kwargs['stdin'] = message
-
-        try:
-            # Get the method from the instance, run it with args
-            method = getattr(instance, method_name)
-            if type(args) in [list, tuple]:
-                result = method(*args, **kwargs)
-            else:
-                result = method(args, **kwargs)
-            # Attach the instance to the results
-            result['instance'] = instance
-            result['traceback'] = None
-            # Notify the main thread that the result is ready
-            conn.send_unicode('result')
-            # throw away its reply
-            conn.recv_unicode()
-            # Send the result
-            conn.send_pyobj(result)
-        except Exception as e:
-            # Exception occured, result an error
-            conn.send_unicode('result')
-            # throw away its reply
-            conn.recv_unicode()
-            # Send the error result
-            conn.send_pyobj({
-                'instance':instance,
-                'stderr':e,
-                'traceback':format_exc(),
-                'return_code': -1,
-                })
-        finally:
-            conn.close()
-
-
-    # Read the contents of STDIN. This will be passed to any thread that
-    # makes a request.
-    # We cannot pass stdin via a parameter.
-    if stdin:
-        if sys.version_info[:1] <= (2, 7):
-            stdin_contents = stdin.read()
-        else:
-            stdin_contents = stdin.buffer.read()
-        stdin.close()
-
-    # Create the threads that will run each ssh connection
-    threads = []
-    if_stdin = True if stdin else False
-    for instance in instances:
-        thread = threading.Thread(target=_wrapper,
-                args=(instance, method_name, if_stdin, args, kwargs))
-        thread.start()
-        threads.append(thread)
-
-    # Respond to any requests for STDIN, gather all results and close
-    finished_thread_count = 0
-    results = []
-    while finished_thread_count < len(threads):
-        message = conn.recv_unicode()
-        if message == 'result':
-            # Thread has completed, get its result
-            conn.send_unicode('result')
-            # Get the results
-            results.append(conn.recv_pyobj())
-            # Thread closed
-            finished_thread_count += 1
-            # send close
-            conn.send_unicode('close')
-        elif message == 'stdin':
-            # Thread requests stdin contents, send it
-            conn.send_pyobj(stdin_contents)
-
-    # All threads have closed, join them!
-    for thread in threads:
-        thread.join()
-
-    conn.close()
-    context.term()
-
-    return results
+__all__ = ['ssh', 'sshm']
 
 
 MATCH_RANGES = re.compile(r'(?:(\d+)(?:,|$))|(?:(\d+-\d+))')
@@ -264,6 +83,110 @@ def expand_servers(server_list):
     return uris
 
 
+def Popen(cmd, stdin, stdout, stderr):
+    """
+    Separating Popen call from ssh command for testing.
+    """
+    import subprocess
+    proc = subprocess.Popen(cmd,
+            stdin=stdin,
+            stdout=stdout,
+            stderr=stderr,)
+    return proc
+
+
+def ssh(context, sink_url, requests_url,
+        url, port, command, extra_arguments,
+        ):
+    """
+    Create an SSH connection to 'url' on port 'port'.  Execute 'command' and
+    pass any stdin to this ssh session.  Return the results via ZMQ (sink_url).
+
+    @param context: Create all ZMQ sockets using this context.
+    @type context: zmq.Context
+
+    @param sink_url: The result will be sent to this ZMQ sink.
+    @type sink_url: str
+
+    @param url: SSH to this url
+    @type url: str
+
+    @param port: destination's port
+    @type port: str
+
+    @param commmand: Execute this command on 'url'.
+    @type command: str
+
+    @param extra_arguments: Pass these extra arguments to the ssh call.
+    @type extra_arguments: list
+
+    @returns: None
+    """
+    # This is the basic result that we send back
+    result = {
+            'url':url,
+            'port':port,
+            }
+
+    # Send the results to this sink
+    sink = context.socket(zmq.PUSH)
+    sink.connect(sink_url)
+
+    # Get stdin
+    requests = context.socket(zmq.REQ)
+    requests.connect(requests_url)
+    requests.send_unicode('get stdin')
+    stdin = requests.recv_pyobj()
+
+    try:
+        cmd = ['ssh',]
+        # Add extra arguments after ssh, but before the uri and command
+        cmd.extend(extra_arguments or [])
+        # Only change the port at the user's request.  Otherwise, use SSH's
+        # default port.
+        if port:
+            cmd.extend([url, '-p', port, command])
+        else:
+            cmd.extend([url, command])
+
+        # Run the command, return its results
+        proc = Popen(cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,)
+
+        # Get the output
+        stdout, stderr = proc.communicate(input=stdin)
+        # Convert output into a usable format
+        if 'decode' in dir(stdout):
+            stdout = stdout.decode()
+        if 'decode' in dir(stderr):
+            stderr = stderr.decode()
+
+        result.update({'return_code':proc.returncode,
+                    'stdout':stdout,
+                    'stderr':stderr,
+                    # Nothing to result in traceback
+                    'traceback':'',
+                    }
+                )
+    except:
+        # Oops, result the traceback
+        result.update({
+                'traceback':format_exc(),
+                }
+            )
+
+    # Add the cmd to the result
+    result.update({'cmd':cmd,})
+
+    # Send the results!
+    sink.send_pyobj(result)
+
+    sink.close()
+    requests.close()
+
+
 
 def sshm(servers, command, extra_arguments=None, stdin=None):
     """
@@ -292,11 +215,64 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     @returns: A list containing (success, handle, message) from each method
         call.
     """
-    handles = [SSHHandle(*u) for u in expand_servers(servers)]
+    # Read in the contents of stdin
+    if stdin:
+        if sys.version_info[:1] <= (2, 7):
+            stdin_contents = stdin.read()
+        else:
+            stdin_contents = stdin.buffer.read()
+        stdin.close()
+    else:
+        stdin_contents = None
 
-    results = method_results_gatherer(handles, 'execute', command, stdin=stdin,
-            kwargs={'extra_arguments':extra_arguments})
-    return results
+    context = zmq.Context()
+    # The results of each ssh call is reported to this sink
+    sink_url = 'inproc://sink'
+    sink = context.socket(zmq.PULL)
+    sink.bind(sink_url)
+    # Requests for the contents of STDIN will come to this rep
+    request_url = 'inproc://stdin'
+    requests = context.socket(zmq.REP)
+    requests.bind(request_url)
+
+    # Start each SSH connection in it's own thread
+    threads = []
+    for url, port in expand_servers(servers):
+        thread = threading.Thread(target=ssh,
+                # Provide the arguments that ssh needs.
+                args=(context, sink_url, request_url,
+                    url, port, command, extra_arguments)
+                )
+        thread.start()
+        threads.append(thread)
+
+    # Listen for stdin requests and job results
+    poller = zmq.Poller()
+    poller.register(sink, zmq.POLLIN)
+    poller.register(requests, zmq.POLLIN)
+
+    # While any thread is active, respond to any requests.
+    # If a thread sends a result, clean it up.
+    completed_threads = 0
+    while completed_threads != len(threads):
+        sockets = dict(poller.poll())
+        if (sink in sockets) and (sockets[sink] == zmq.POLLIN):
+            # Got a result in the sink!
+            result = sink.recv_pyobj()
+            completed_threads += 1
+            yield result
+        elif (requests in sockets) and (sockets[requests] == zmq.POLLIN):
+            if requests.recv_unicode() == 'get stdin':
+                # A thread requests the contents of STDIN, send it
+                requests.send_pyobj(stdin_contents)
+
+    # Cleanup threads
+    for thread in threads:
+        thread.join()
+
+    sink.close()
+    requests.close()
+    context.term()
 
 
 def get_argparse_args(args=None):

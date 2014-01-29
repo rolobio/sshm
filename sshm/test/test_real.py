@@ -30,7 +30,7 @@ class TestReal(unittest.TestCase):
         """
         Simply login to the local machine and exit.
         """
-        results_list = sshm('localhost', 'exit')
+        results_list = list(sshm('localhost', 'exit'))
         result = results_list[0]
         self.assertEqual(0, result['return_code'])
 
@@ -39,7 +39,7 @@ class TestReal(unittest.TestCase):
         """
         Simply login to the local machine and exit with a non-zero.
         """
-        results_list = sshm('localhost', 'exit 1')
+        results_list = list(sshm('localhost', 'exit 1'))
         result = results_list[0]
         self.assertEqual(1, result['return_code'])
 
@@ -51,7 +51,7 @@ class TestReal(unittest.TestCase):
         contents = b'hello'
         fh = self._get_temp_file(contents)
 
-        results_list = sshm('localhost', 'cat', stdin=fh)
+        results_list = list(sshm('localhost', 'cat', stdin=fh))
         result = results_list[0]
         self.assertEqual(result['return_code'], 0)
         self.assertEqual('hello', result['stdout'])
@@ -68,10 +68,11 @@ class TestReal(unittest.TestCase):
         Simply login to the local machine three times and verify there is
         output.
         """
-        results_list = sshm('localhost,localhost,localhost', 'echo testing')
+        results_list = list(sshm('localhost,localhost,localhost', 'echo testing'))
 
         # Verify all instances are unique
-        assert len(set([r['instance'] for r in results_list])) == 3
+        self.assertEqual(3,
+                len(results_list))
 
         for result in results_list:
             self.assertEqual(0, result['return_code'])
@@ -87,7 +88,7 @@ class TestReal(unittest.TestCase):
 
         tfh = tempfile.NamedTemporaryFile()
 
-        results_list = sshm('localhost', 'cat > %s' % tfh.name, stdin=fh)
+        results_list = list(sshm('localhost', 'cat > %s' % tfh.name, stdin=fh))
         result = results_list[0]
         self.assertEqual(0, result['return_code'])
 
