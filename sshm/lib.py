@@ -154,10 +154,18 @@ def ssh(context, sink_url, requests_url,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,)
+
+        # Get the output
         stdout, stderr = proc.communicate(input=stdin)
+        # Convert output into a usable format
+        if 'decode' in dir(stdout):
+            stdout = stdout.decode()
+        if 'decode' in dir(stderr):
+            stderr = stderr.decode()
+
         result.update({'return_code':proc.returncode,
-                    'stdout':stdout.decode(),
-                    'stderr':stderr.decode(),
+                    'stdout':stdout,
+                    'stderr':stderr,
                     # Nothing to result in traceback
                     'traceback':'',
                     }

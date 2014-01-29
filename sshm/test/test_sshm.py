@@ -238,6 +238,7 @@ class Test_sshm(unittest.TestCase):
 
         results_list = list(lib.sshm('example[01-03].com', 'exit'))
         for result in results_list:
+            self.assertEqual('', result['traceback'])
             self.assertIn(result['url'],
                     ['example01.com', 'example02.com', 'example03.com']
                     )
