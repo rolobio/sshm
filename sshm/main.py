@@ -31,7 +31,7 @@ def main():
     for result in results:
         out = ['sshm: %s%s(%d):' % (
                 'Failure: ' if result['return_code'] != 0 else '',
-                result['instance'].uri,
+                result['url'],
                 result['return_code'],
                 ),]
         if result['traceback']: out.append(result['traceback'].rstrip('\n'))
