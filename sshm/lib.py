@@ -167,7 +167,7 @@ def ssh(context, url, port, command, extra_arguments):
                     }
                 )
     except:
-        # Oops, result the traceback
+        # Oops, get the traceback
         result.update({
                 'traceback':format_exc(),
                 }

@@ -321,7 +321,7 @@ class Test_sshm2(unittest.TestCase):
 
     def test_sshm_stdin(self):
         """
-        sshm should pass the contents of stdin to any request to
+        sshm should pass the contents of stdin to any request on
         lib.requests_url.
         """
         import tempfile
