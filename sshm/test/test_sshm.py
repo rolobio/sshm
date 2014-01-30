@@ -187,6 +187,30 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(extra_args, [provided[2],])
 
 
+    def test_create_uri(self):
+        """
+        create_uri assembles them as expected.
+        """
+        self.assertEqual('example.com',
+                lib.create_uri('', 'example.com', '', '')
+                )
+        self.assertEqual('example01.com',
+                lib.create_uri('', 'example', '01', '.com')
+                )
+        self.assertEqual('example01',
+                lib.create_uri('', 'example', '01', '')
+                )
+        self.assertEqual('user@example',
+                lib.create_uri('user', 'example', '', '')
+                )
+        self.assertEqual('user@example.com',
+                lib.create_uri('user', 'example', '', '.com')
+                )
+        self.assertEqual('user@example10.com',
+                lib.create_uri('user', 'example', '10', '.com')
+                )
+
+
 
 class Test_sshm(unittest.TestCase):
 
