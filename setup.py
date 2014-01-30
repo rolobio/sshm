@@ -17,7 +17,6 @@ config = {
     'long_description':__long_description__,
     'install_requires': [
         'pyzmq',
-        'mock',
         ],
     'classifiers':[
         "Development Status :: 4 - Beta",
