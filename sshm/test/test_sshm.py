@@ -325,10 +325,11 @@ class Test_sshm2(unittest.TestCase):
         lib.requests_url.
         """
         import tempfile
-        stdin_contents = 'foo'
-        fh = tempfile.NamedTemporaryFile('wb')
+        stdin_contents = b'foo'
+        fh = tempfile.NamedTemporaryFile('wb', delete=False)
         fh.write(stdin_contents)
         fh.seek(0)
+        fh = open(fh.name, 'r')
 
         def side_effect(context, *a, **kw):
             sink = context.socket(zmq.PUSH)
