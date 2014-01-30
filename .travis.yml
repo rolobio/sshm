@@ -4,7 +4,7 @@ python:
   - "3.2"
   - "3.3"
 # command to install dependencies
-install: "pip install -r requirements.test.txt"
+install: "pip install -r requirements.tests.txt"
 script:
     # Run tests
   - "python setup.py test"
