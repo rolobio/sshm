@@ -86,7 +86,6 @@ def Popen(cmd, stdin, stdout, stderr):
     """
     Separating Popen call from ssh command for testing.
     """
-    import subprocess
     proc = subprocess.Popen(cmd,
             stdin=stdin,
             stdout=stdout,
@@ -94,19 +93,17 @@ def Popen(cmd, stdin, stdout, stderr):
     return proc
 
 
-def ssh(context, sink_url, requests_url,
-        url, port, command, extra_arguments,
-        ):
+# ZMQ urls used to connect sshm and ssh
+sink_url = 'inproc://sink'
+requests_url = 'inproc://requests'
+
+def ssh(context, url, port, command, extra_arguments):
     """
     Create an SSH connection to 'url' on port 'port'.  Execute 'command' and
     pass any stdin to this ssh session.  Return the results via ZMQ (sink_url).
 
     @param context: Create all ZMQ sockets using this context.
     @type context: zmq.Context
-
-    @param sink_url: The result will be sent to this ZMQ sink.
-    @type sink_url: str
-
     @param url: SSH to this url
     @type url: str
 
@@ -226,21 +223,18 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
 
     context = zmq.Context()
     # The results of each ssh call is reported to this sink
-    sink_url = 'inproc://sink'
     sink = context.socket(zmq.PULL)
     sink.bind(sink_url)
     # Requests for the contents of STDIN will come to this rep
-    request_url = 'inproc://stdin'
     requests = context.socket(zmq.REP)
-    requests.bind(request_url)
+    requests.bind(requests_url)
 
     # Start each SSH connection in it's own thread
     threads = []
     for url, port in expand_servers(servers):
         thread = threading.Thread(target=ssh,
                 # Provide the arguments that ssh needs.
-                args=(context, sink_url, request_url,
-                    url, port, command, extra_arguments)
+                args=(context, url, port, command, extra_arguments)
                 )
         thread.start()
         threads.append(thread)

@@ -3,6 +3,7 @@ from sshm import lib
 
 from mock import MagicMock, call
 import unittest
+import zmq
 
 class TestRegex(unittest.TestCase):
 
@@ -261,10 +262,88 @@ class Test_sshm(unittest.TestCase):
         lib.Popen = sub.Popen
 
         results_list = list(lib.sshm('example[01-03].com', 'exit'))
+        self.assertEqual(3,
+                len(set([r['url'] for r in results_list]))
+                )
         for result in results_list:
             self.assertEqual('', result['traceback'])
             self.assertIn(result['url'],
                     ['example01.com', 'example02.com', 'example03.com']
                     )
+
+
+class Test_sshm2(unittest.TestCase):
+
+
+    def test_sshm_ssh(self):
+        """
+        Test how sshm uses the 'ssh' function.
+        """
+        def side_effect(context, *a, **kw):
+            """
+            Send empty results.
+            """
+            sink = context.socket(zmq.PUSH)
+            sink.connect(lib.sink_url)
+            sink.send_pyobj({})
+        orig = lib.ssh
+        lib.ssh = MagicMock(side_effect=side_effect)
+
+        extra_arguments = ['-o=Something yes',]
+        result_list = list(lib.sshm('example[01-03].com', 'exit 55',
+            extra_arguments=extra_arguments))
+
+        for result in result_list:
+            self.assertEqual(result, {})
+
+        expected_urls = [
+                'example01.com',
+                'example02.com',
+                'example03.com',
+                ]
+
+        self.assertTrue(lib.ssh.called)
+        # Verify each ssh function call
+        for args_list, expected_url in zip(lib.ssh.call_args_list, expected_urls):
+            args, kwargs = args_list
+
+            self.assertEqual(kwargs, {})
+
+            context, url, port, command, extra_arguments = args
+            self.assertEqual(zmq.Context, type(context))
+            self.assertEqual(expected_url, url)
+            self.assertEqual('', port)
+            self.assertEqual('exit 55', command)
+            self.assertEqual(extra_arguments, extra_arguments)
+
+        lib.ssh = orig
+
+
+    def test_sshm_stdin(self):
+        """
+        sshm should pass the contents of stdin to any request to
+        lib.requests_url.
+        """
+        import tempfile
+        stdin_contents = 'foo'
+        fh = tempfile.NamedTemporaryFile()
+        fh.write(stdin_contents)
+        fh.seek(0)
+
+        def side_effect(context, *a, **kw):
+            sink = context.socket(zmq.PUSH)
+            sink.connect(lib.sink_url)
+
+            requests = context.socket(zmq.REQ)
+            requests.connect(lib.requests_url)
+            requests.send_unicode('get stdin')
+
+            sink.send_pyobj({'stdin_contents':requests.recv_pyobj()})
+        orig = lib.ssh
+        lib.ssh = MagicMock(side_effect=side_effect)
+
+        results_list = list(lib.sshm('example.com', 'exit', stdin=fh))
+        self.assertEqual(results_list[0]['stdin_contents'], stdin_contents)
+
 
 
