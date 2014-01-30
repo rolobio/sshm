@@ -1,12 +1,38 @@
 #! /usr/bin/env python3
 try:
     from lib import sshm
-    from lib import get_argparse_args
 except ImportError:
     from sshm.lib import sshm
-    from sshm.lib import get_argparse_args
 
-__all__ = ['SSHHandle', 'method_results_gatherer', 'sshm']
+__all__ = ['sshm']
+
+
+def get_argparse_args(args=None):
+    """
+    Get the arguments passed to this script when it was run.
+
+    @param args: A list of arguments passed in the console.
+    @type args: list
+
+    @returns: A tuple containing (args, command, extra_args)
+    @rtype: tuple
+    """
+    try:
+        from _info import __version__, __long_description__
+    except ImportError:
+        from sshm._info import __version__, __long_description__
+    import argparse
+
+    p = argparse.ArgumentParser(
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=__long_description__)
+    p.add_argument('servers')
+    p.add_argument('command')
+    p.add_argument('--version', action='version', version='%(prog)s '+__version__)
+    args, extra_args = p.parse_known_args(args=args)
+    return (args, args.command, extra_args)
+
+
 
 def main():
     """

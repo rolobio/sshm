@@ -86,7 +86,6 @@ def Popen(cmd, stdin, stdout, stderr):
     """
     Separating Popen call from ssh command for testing.
     """
-    import subprocess
     proc = subprocess.Popen(cmd,
             stdin=stdin,
             stdout=stdout,
@@ -94,19 +93,17 @@ def Popen(cmd, stdin, stdout, stderr):
     return proc
 
 
-def ssh(context, sink_url, requests_url,
-        url, port, command, extra_arguments,
-        ):
+# ZMQ urls used to connect sshm and ssh
+sink_url = 'inproc://sink'
+requests_url = 'inproc://requests'
+
+def ssh(context, url, port, command, extra_arguments):
     """
     Create an SSH connection to 'url' on port 'port'.  Execute 'command' and
     pass any stdin to this ssh session.  Return the results via ZMQ (sink_url).
 
     @param context: Create all ZMQ sockets using this context.
     @type context: zmq.Context
-
-    @param sink_url: The result will be sent to this ZMQ sink.
-    @type sink_url: str
-
     @param url: SSH to this url
     @type url: str
 
@@ -170,7 +167,7 @@ def ssh(context, sink_url, requests_url,
                     }
                 )
     except:
-        # Oops, result the traceback
+        # Oops, get the traceback
         result.update({
                 'traceback':format_exc(),
                 }
@@ -226,21 +223,18 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
 
     context = zmq.Context()
     # The results of each ssh call is reported to this sink
-    sink_url = 'inproc://sink'
     sink = context.socket(zmq.PULL)
     sink.bind(sink_url)
     # Requests for the contents of STDIN will come to this rep
-    request_url = 'inproc://stdin'
     requests = context.socket(zmq.REP)
-    requests.bind(request_url)
+    requests.bind(requests_url)
 
     # Start each SSH connection in it's own thread
     threads = []
     for url, port in expand_servers(servers):
         thread = threading.Thread(target=ssh,
                 # Provide the arguments that ssh needs.
-                args=(context, sink_url, request_url,
-                    url, port, command, extra_arguments)
+                args=(context, url, port, command, extra_arguments)
                 )
         thread.start()
         threads.append(thread)
@@ -273,30 +267,5 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     requests.close()
     context.term()
 
-
-def get_argparse_args(args=None):
-    """
-    Get the arguments passed to this script when it was run.
-
-    @param args: A list of arguments passed in the console.
-    @type args: list
-
-    @returns: A tuple containing (args, command, extra_args)
-    @rtype: tuple
-    """
-    try:
-        from _info import __version__, __long_description__
-    except ImportError:
-        from sshm._info import __version__, __long_description__
-    import argparse
-
-    p = argparse.ArgumentParser(
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description=__long_description__)
-    p.add_argument('servers')
-    p.add_argument('command')
-    p.add_argument('--version', action='version', version='%(prog)s '+__version__)
-    args, extra_args = p.parse_known_args(args=args)
-    return (args, args.command, extra_args)
 
 
