@@ -19,8 +19,8 @@ def expand_ranges(to_expand):
 
         Example: "1,4,07-10" to ['1', '4', '07', '08', '09', '10']
 
-    @type ranges: str
-    @param ranges: Expand this string into a list of integers.
+    @type to_expand: str
+    @param to_expand: Expand this string into a list of integers.
     """
     nums = []
     for single, range_str in MATCH_RANGES.findall(to_expand):
