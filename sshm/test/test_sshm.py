@@ -326,7 +326,7 @@ class Test_sshm2(unittest.TestCase):
         """
         import tempfile
         stdin_contents = 'foo'
-        fh = tempfile.NamedTemporaryFile()
+        fh = tempfile.NamedTemporaryFile('wb')
         fh.write(stdin_contents)
         fh.seek(0)
 
