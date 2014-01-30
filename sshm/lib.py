@@ -37,20 +37,19 @@ def expand_ranges(to_expand):
     return nums
 
 
-def create_uri(user, body, num, suffix, port):
+def create_uri(user, body, num, suffix):
     """
-    Use the provided parameters to create a URI.  Port will be passed
-    as the second object in the returned tuple.
+    Use the provided parameters to create a URI.
 
-    @rtype: tuple
-        Example: ('user@host3', '22')
+    @rtype: str
+        Example: 'user@host3'
     """
     uri = ''
     if user: uri += user+'@'
     uri += body
     uri += num
     uri += suffix
-    return (uri, port)
+    return uri
 
 
 EXTRACT_URIS = re.compile(r'([@\w._:-]+(?:\[[\d,-]+\])?(?:[@\w._:-]+)?)(?:,|$)')
@@ -75,11 +74,11 @@ def expand_servers(server_list):
         if range_str:
             # There are multiple hosts, add a URI for each
             for num in expand_ranges(range_str):
-                uri = create_uri(user, body, num, suffix, port)
-                uris.append(uri)
+                uri = create_uri(user, body, num, suffix)
+                uris.append((uri, port))
         else:
-            uri = create_uri(user, body, '', suffix, port)
-            uris.append(uri)
+            uri = create_uri(user, body, '', suffix)
+            uris.append((uri, port))
     return uris
 
 
