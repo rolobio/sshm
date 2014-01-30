@@ -189,6 +189,9 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     SSH into multiple servers and execute "command". Pass stdin to these ssh
     handles.
 
+    This is a generator to facilitate using the results of each ssh command as
+    they become available.
+
     @param servers: A string containing the servers to execute "command" on via
         SSH.
         Examples:
