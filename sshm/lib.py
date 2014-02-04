@@ -252,22 +252,17 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
 
     # While any thread is active, respond to any requests.
     # If a thread sends a result, clean it up.
-    completed_threads = 0
-    while completed_threads != len(threads):
+    while threading.active_count() > 2:
         sockets = dict(poller.poll())
         if (sink in sockets) and (sockets[sink] == zmq.POLLIN):
             # Got a result in the sink!
-            result = sink.recv_pyobj()
-            completed_threads += 1
-            yield result
+            results = sink.recv_pyobj()
+            yield results
+            threads[results['thread_num']].join()
         elif (requests in sockets) and (sockets[requests] == zmq.POLLIN):
             if requests.recv_unicode() == 'get stdin':
                 # A thread requests the contents of STDIN, send it
                 requests.send_pyobj(stdin_contents)
-
-    # Cleanup threads
-    for thread in threads:
-        thread.join()
 
     sink.close()
     requests.close()
