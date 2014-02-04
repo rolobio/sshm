@@ -55,14 +55,18 @@ def main():
     failure = False
     results = sshm(args.servers, command, extra_arguments, stdin)
     for result in results:
-        out = ['sshm: %s%s(%d):' % (
-                'Failure: ' if result['return_code'] != 0 else '',
-                result['url'],
-                result['return_code'],
-                ),]
-        if result['traceback']: out.append(result['traceback'].rstrip('\n'))
-        if result['stdout']: out.append(result['stdout'].rstrip('\n'))
-        if result['stderr']: out.append(result['stderr'].rstrip('\n'))
+        if 'traceback' in result:
+            # An exception occured.
+            out = ['sshm: Exception: %s:' % result['url'],
+                    result['traceback'].rstrip('\n'),]
+        else:
+            out = ['sshm: %s%s(%d):' % (
+                    'Failure: ' if result['return_code'] != 0 else '',
+                    result['url'],
+                    result['return_code'],
+                    ),]
+            if result['stdout']: out.append(result['stdout'].rstrip('\n'))
+            if result['stderr']: out.append(result['stderr'].rstrip('\n'))
         # Put output in one line if it can fit
         if sum([s.count('\n') for s in out]) == 0 and len(out) <= 2:
             print(' '.join(out))
