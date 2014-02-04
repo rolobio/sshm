@@ -97,7 +97,7 @@ def Popen(cmd, stdin, stdout, stderr):
 sink_url = 'inproc://sink'
 requests_url = 'inproc://requests'
 
-def ssh(context, url, port, command, extra_arguments):
+def ssh(thread_num, context, url, port, command, extra_arguments):
     """
     Create an SSH connection to 'url' on port 'port'.  Execute 'command' and
     pass any stdin to this ssh session.  Return the results via ZMQ (sink_url).
@@ -120,6 +120,7 @@ def ssh(context, url, port, command, extra_arguments):
     """
     # This is the basic result that we send back
     result = {
+            'thread_num':thread_num,
             'url':url,
             'port':port,
             }
@@ -234,13 +235,15 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
 
     # Start each SSH connection in it's own thread
     threads = []
+    thread_num = 0
     for url, port in expand_servers(servers):
         thread = threading.Thread(target=ssh,
                 # Provide the arguments that ssh needs.
-                args=(context, url, port, command, extra_arguments)
+                args=(thread_num, context, url, port, command, extra_arguments)
                 )
         thread.start()
         threads.append(thread)
+        thread_num += 1
 
     # Listen for stdin requests and job results
     poller = zmq.Poller()
