@@ -241,8 +241,9 @@ class Test_sshm(unittest.TestCase):
         sub, proc = self.fake_subprocess('', '', 0)
         lib.Popen = sub.Popen
 
-        result = list(lib.sshm('example.com', 'exit'))[0]
-        self.assertEqual(result,
+        result_list = list(lib.sshm('example.com', 'exit'))
+        self.assertEqual(1, len(result_list))
+        self.assertEqual(result_list[0],
                 {
                     'traceback':'',
                     'stdout': '',
@@ -250,6 +251,7 @@ class Test_sshm(unittest.TestCase):
                     'cmd': ['ssh', 'example.com', 'exit'],
                     'return_code': 0,
                     'stderr': '',
+                    'thread_num':0,
                     'port': ''
                     }
                 )
@@ -263,6 +265,7 @@ class Test_sshm(unittest.TestCase):
         lib.Popen = sub.Popen
 
         results_list = list(lib.sshm('example[01-03].com', 'exit'))
+        self.assertEqual(3, len(results_list))
         self.assertEqual(3,
                 len(set([r['url'] for r in results_list]))
                 )
@@ -280,22 +283,22 @@ class Test_sshm2(unittest.TestCase):
         """
         Test how sshm uses the 'ssh' function.
         """
-        def side_effect(context, *a, **kw):
+        def side_effect(thread_num, context, *a, **kw):
             """
             Send empty results.
             """
             sink = context.socket(zmq.PUSH)
             sink.connect(lib.sink_url)
-            sink.send_pyobj({})
+            sink.send_pyobj({'thread_num':thread_num,})
         orig = lib.ssh
         lib.ssh = MagicMock(side_effect=side_effect)
 
         extra_arguments = ['-o=Something yes',]
-        result_list = list(lib.sshm('example[01-03].com', 'exit 55',
+        result_list = list(lib.sshm('example[01-03].com', 'foo',
             extra_arguments=extra_arguments))
 
         for result in result_list:
-            self.assertEqual(result, {})
+            self.assertIn('thread_num', result)
 
         expected_urls = [
                 'example01.com',
@@ -310,11 +313,12 @@ class Test_sshm2(unittest.TestCase):
 
             self.assertEqual(kwargs, {})
 
-            context, url, port, command, extra_arguments = args
+            thread_num, context, url, port, command, extra_arguments = args
+            self.assertEqual(int, type(thread_num))
             self.assertEqual(zmq.Context, type(context))
             self.assertEqual(expected_url, url)
             self.assertEqual('', port)
-            self.assertEqual('exit 55', command)
+            self.assertEqual('foo', command)
             self.assertEqual(extra_arguments, extra_arguments)
 
         lib.ssh = orig
@@ -332,7 +336,7 @@ class Test_sshm2(unittest.TestCase):
         fh.seek(0)
         fh = open(fh.name, 'r')
 
-        def side_effect(context, *a, **kw):
+        def side_effect(thread_num, context, *a, **kw):
             sink = context.socket(zmq.PUSH)
             sink.connect(lib.sink_url)
 
@@ -340,7 +344,7 @@ class Test_sshm2(unittest.TestCase):
             requests.connect(lib.requests_url)
             requests.send_unicode('get stdin')
 
-            sink.send_pyobj({'stdin_contents':requests.recv_pyobj()})
+            sink.send_pyobj({'stdin_contents':requests.recv_pyobj(), 'thread_num':thread_num})
         orig = lib.ssh
         lib.ssh = MagicMock(side_effect=side_effect)
 
