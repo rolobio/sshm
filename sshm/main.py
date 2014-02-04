@@ -55,7 +55,7 @@ def main():
     failure = False
     results = sshm(args.servers, command, extra_arguments, stdin)
     for result in results:
-        if 'traceback' in result:
+        if ('traceback' in result) and (result['traceback'] != ''):
             # An exception occured.
             out = ['sshm: Exception: %s:' % result['url'],
                     result['traceback'].rstrip('\n'),]
