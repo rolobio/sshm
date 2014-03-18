@@ -8,7 +8,7 @@ import threading
 import zmq
 from traceback import format_exc
 
-__all__ = ['ssh', 'sshm']
+__all__ = ['sshm']
 
 
 MATCH_RANGES = re.compile(r'(?:(\d+)(?:,|$))|(?:(\d+-\d+))')
