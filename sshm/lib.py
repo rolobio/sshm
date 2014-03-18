@@ -163,7 +163,7 @@ def ssh(thread_num, context, url, port, command, extra_arguments):
         result.update({'return_code':proc.returncode,
                     'stdout':stdout,
                     'stderr':stderr,
-                    # Nothing to result in traceback
+                    # Nothing to report in traceback
                     'traceback':'',
                     }
                 )
@@ -255,13 +255,13 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     completed_threads = 0
     while completed_threads != len(threads):
         sockets = dict(poller.poll())
-        if (sink in sockets) and (sockets[sink] == zmq.POLLIN):
+        if sockets.get(sink) == zmq.POLLIN:
             # Got a result in the sink!
             results = sink.recv_pyobj()
             completed_threads += 1
             yield results
             threads[results['thread_num']].join()
-        elif (requests in sockets) and (sockets[requests] == zmq.POLLIN):
+        elif sockets.get(requests) == zmq.POLLIN:
             if requests.recv_unicode() == 'get stdin':
                 # A thread requests the contents of STDIN, send it
                 requests.send_pyobj(stdin_contents)

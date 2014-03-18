@@ -56,7 +56,6 @@ class TestReal(unittest.TestCase):
         self.assertEqual(result['return_code'], 0)
         self.assertEqual('hello', result['stdout'])
         # We expect a unicode string.  Python3.x's strings are unicode.
-        import sys
         try:
             self.assertIsInstance(result['stdout'], unicode)
         except NameError:
