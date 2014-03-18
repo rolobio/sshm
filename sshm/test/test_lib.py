@@ -351,5 +351,7 @@ class Test_sshm2(unittest.TestCase):
         results_list = list(lib.sshm('example.com', 'exit', stdin=fh))
         self.assertEqual(results_list[0]['stdin_contents'], stdin_contents)
 
+        lib.ssh = orig
+
 
 
