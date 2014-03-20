@@ -34,7 +34,7 @@ def get_argparse_args(args=None):
 
 
 
-def main():
+def main(): # pragma: no cover
     """
     Run SSHM using console provided arguments.
 
