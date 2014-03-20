@@ -217,10 +217,9 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     """
     # Read in the contents of stdin
     if stdin:
-        # This is not covered because it is python version specific
-        if sys.version_info[:1] <= (2, 7): # pragma: no cover
+        if sys.version_info[:1] <= (2, 7): # pragma: no cover version specific
             stdin_contents = stdin.read()
-        else: # pragma: no cover
+        else: # pragma: no cover version specific
             stdin_contents = stdin.buffer.read()
         stdin.close()
     else:
