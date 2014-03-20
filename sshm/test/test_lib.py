@@ -214,6 +214,66 @@ class TestFuncs(unittest.TestCase):
 
 
 
+class Test_ssh(unittest.TestCase):
+
+    def fake_subprocess(self, stdout, stderr, returncode):
+        proc = MagicMock()
+        proc.returncode = returncode
+        proc.communicate.return_value = (stdout, stderr)
+
+        sub = MagicMock()
+        sub.Popen.return_value = proc
+
+        return (sub, proc)
+
+
+    def fake_context(self):
+        context = MagicMock()
+        sock = MagicMock()
+        context.socket.return_value = sock
+        return context, sock
+
+
+    def test_port(self):
+        """
+        The ssh command arguments change when a port is specified.
+        """
+        sub, proc = self.fake_subprocess('', '', 0)
+        orig = lib.Popen
+        lib.Popen = sub.Popen
+
+        context, socket = self.fake_context()
+        lib.ssh(1, context, 'asdf', '9678', 'command', [])
+
+        # Get the result that was sent in the socket
+        self.assertEqual(socket.send_pyobj.call_count, 1)
+        cmd = socket.send_pyobj.call_args_list[0][0][0]['cmd']
+        self.assertEqual(cmd,
+                ['ssh', 'asdf', '-p', '9678', 'command'])
+
+        lib.Popen = orig
+
+
+    def test_exception(self):
+        """
+        An exception is passed in the results.
+        """
+        sub, proc = self.fake_subprocess('', '', 0)
+        proc.communicate.side_effect = Exception('Oh no!')
+        orig = lib.Popen
+        lib.Popen = sub.Popen
+
+        context, socket = self.fake_context()
+        lib.ssh(1, context, 'asdf', '9678', 'command', [])
+        results = socket.send_pyobj.call_args_list[0][0][0]
+
+        self.assertIn('traceback', results)
+        self.assertIn('Oh no!', results['traceback'])
+
+        lib.Popen = orig
+
+
+
 class Test_sshm(unittest.TestCase):
 
     def fake_subprocess(self, stdout, stderr, returncode):
@@ -308,6 +368,7 @@ class Test_sshm2(unittest.TestCase):
 
         self.assertTrue(lib.ssh.called)
         # Verify each ssh function call
+        self.assertEqual(len(lib.ssh.call_args_list), len(expected_urls))
         for args_list, expected_url in zip(lib.ssh.call_args_list, expected_urls):
             args, kwargs = args_list
 
