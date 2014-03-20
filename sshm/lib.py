@@ -155,9 +155,9 @@ def ssh(thread_num, context, url, port, command, extra_arguments):
         # Get the output
         stdout, stderr = proc.communicate(input=stdin)
         # Convert output into a usable format
-        if 'decode' in dir(stdout):
+        if 'decode' in dir(stdout): # pragma: no cover version specific
             stdout = stdout.decode()
-        if 'decode' in dir(stderr):
+        if 'decode' in dir(stderr): # pragma: no cover version specific
             stderr = stderr.decode()
 
         result.update({'return_code':proc.returncode,
