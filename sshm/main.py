@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
-try:
+try: # pragma: no cover version specific
     from lib import sshm
-except ImportError:
+except ImportError: # pragma: no cover version specific
     from sshm.lib import sshm
 
 __all__ = ['sshm']
@@ -17,9 +17,9 @@ def get_argparse_args(args=None):
     @returns: A tuple containing (args, command, extra_args)
     @rtype: tuple
     """
-    try:
+    try: # pragma: no cover
         from _info import __version__, __long_description__
-    except ImportError:
+    except ImportError: # pragma: no cover
         from sshm._info import __version__, __long_description__
     import argparse
 
@@ -80,6 +80,6 @@ def main(): # pragma: no cover
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     main()
 
