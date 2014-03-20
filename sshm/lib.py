@@ -82,7 +82,7 @@ def expand_servers(server_list):
     return uris
 
 
-def Popen(cmd, stdin, stdout, stderr):
+def Popen(cmd, stdin, stdout, stderr): # pragma: no cover
     """
     Separating Popen call from ssh command for testing.
     """
