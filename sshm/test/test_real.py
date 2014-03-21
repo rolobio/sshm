@@ -1,4 +1,7 @@
 #! /usr/bin/env python3
+"""
+You must be able to login to your own machine for these tests to work.
+"""
 from sshm.lib import sshm
 
 import os
@@ -6,25 +9,26 @@ import os.path
 import tempfile
 import unittest
 
+
+def _get_temp_file(contents):
+    """
+    Create a temporary file, write contents to it, and return a readable
+    tempfile handle.
+    """
+    file_handle = tempfile.NamedTemporaryFile('wb', delete=False)
+    name = file_handle.name
+    file_handle.write(contents)
+    file_handle.seek(0)
+    file_handle.close()
+    file_handle = open(name, 'r')
+    return file_handle
+
+
 @unittest.skipIf('CI' in os.environ.keys(), 'Travis-CI is running these tests.')
 class TestReal(unittest.TestCase):
     """
     You must be able to login to your own machine for these tests to work.
     """
-
-    def _get_temp_file(self, contents):
-        """
-        Create a temporary file, write contents to it, and return a readable
-        tempfile handle.
-        """
-        fh = tempfile.NamedTemporaryFile('wb', delete=False)
-        name = fh.name
-        fh.write(contents)
-        fh.seek(0)
-        fh.close()
-        fh = open(name, 'r')
-        return fh
-
 
     def test_localhost(self):
         """
@@ -49,9 +53,9 @@ class TestReal(unittest.TestCase):
         Login to the local machine and pass a file object through stdin.
         """
         contents = b'hello'
-        fh = self._get_temp_file(contents)
+        file_handle = _get_temp_file(contents)
 
-        results_list = list(sshm('localhost', 'cat', stdin=fh))
+        results_list = list(sshm('localhost', 'cat', stdin=file_handle))
         result = results_list[0]
         self.assertEqual(result['return_code'], 0)
         self.assertEqual('hello', result['stdout'])
@@ -83,19 +87,19 @@ class TestReal(unittest.TestCase):
         Binary files are transfered correctly using STDIN.
         """
         contents = os.urandom(10000)
-        fh = self._get_temp_file(contents)
+        file_handle = _get_temp_file(contents)
 
-        tfh = tempfile.NamedTemporaryFile()
+        tfile_handle = tempfile.NamedTemporaryFile()
 
-        results_list = list(sshm('localhost', 'cat > %s' % tfh.name, stdin=fh))
+        results_list = list(sshm('localhost', 'cat > %s' % tfile_handle.name, stdin=file_handle))
         result = results_list[0]
         self.assertEqual(0, result['return_code'])
 
-        self.assertTrue(os.path.isfile(tfh.name))
+        self.assertTrue(os.path.isfile(tfile_handle.name))
 
         # Read the contents of the copied file, make sure they are intact.
-        with open(tfh.name, 'rb') as tfh:
-            self.assertEqual(tfh.read(), contents)
+        with open(tfile_handle.name, 'rb') as tfile_handle:
+            self.assertEqual(tfile_handle.read(), contents)
 
 
 

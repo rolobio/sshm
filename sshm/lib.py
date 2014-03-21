@@ -1,9 +1,7 @@
 #! /usr/bin/env python3
-import io
 import re
 import subprocess
 import sys
-import tempfile
 import threading
 import zmq
 from traceback import format_exc
@@ -27,13 +25,13 @@ def expand_ranges(to_expand):
         if single:
             nums.append(single)
         if range_str:
-            x, y = range_str.split('-')
+            i, j = range_str.split('-')
             # Create a string that will pad the integer with its current amount
             # of zeroes.
-            # Example: if x is '03' the string will be '%0.2d'
-            padding = '%'+'0.%d' % len(x) +'d'
-            for i in range(int(x), int(y)+1):
-                nums.append(padding % i)
+            # Example: if i is '03' the string will be '%0.2d'
+            padding = '%'+'0.%d' % len(i) +'d'
+            for k in range(int(i), int(j)+1):
+                nums.append(padding % k)
     return nums
 
 
@@ -45,7 +43,8 @@ def create_uri(user, body, num, suffix):
         Example: 'user@host3'
     """
     uri = ''
-    if user: uri += user+'@'
+    if user:
+        uri += user+'@'
     uri += body
     uri += num
     uri += suffix
@@ -82,7 +81,7 @@ def expand_servers(server_list):
     return uris
 
 
-def Popen(cmd, stdin, stdout, stderr): # pragma: no cover
+def popen(cmd, stdin, stdout, stderr): # pragma: no cover
     """
     Separating Popen call from ssh command for testing.
     """
@@ -94,13 +93,13 @@ def Popen(cmd, stdin, stdout, stderr): # pragma: no cover
 
 
 # ZMQ urls used to connect sshm and ssh
-sink_url = 'inproc://sink'
-requests_url = 'inproc://requests'
+SINK_URL = 'inproc://sink'
+REQUESTS_URL = 'inproc://requests'
 
 def ssh(thread_num, context, url, port, command, extra_arguments):
     """
     Create an SSH connection to 'url' on port 'port'.  Execute 'command' and
-    pass any stdin to this ssh session.  Return the results via ZMQ (sink_url).
+    pass any stdin to this ssh session.  Return the results via ZMQ (SINK_URL).
 
     @param context: Create all ZMQ sockets using this context.
     @type context: zmq.Context
@@ -127,11 +126,11 @@ def ssh(thread_num, context, url, port, command, extra_arguments):
 
     # Send the results to this sink
     sink = context.socket(zmq.PUSH)
-    sink.connect(sink_url)
+    sink.connect(SINK_URL)
 
     # Get stdin
     requests = context.socket(zmq.REQ)
-    requests.connect(requests_url)
+    requests.connect(REQUESTS_URL)
     requests.send_unicode('get stdin')
     stdin = requests.recv_pyobj()
 
@@ -147,7 +146,7 @@ def ssh(thread_num, context, url, port, command, extra_arguments):
             cmd.extend([url, command])
 
         # Run the command, return its results
-        proc = Popen(cmd,
+        proc = popen(cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,)
@@ -228,10 +227,10 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     context = zmq.Context()
     # The results of each ssh call is reported to this sink
     sink = context.socket(zmq.PULL)
-    sink.bind(sink_url)
+    sink.bind(SINK_URL)
     # Requests for the contents of STDIN will come to this rep
     requests = context.socket(zmq.REP)
-    requests.bind(requests_url)
+    requests.bind(REQUESTS_URL)
 
     # Start each SSH connection in it's own thread
     threads = []
