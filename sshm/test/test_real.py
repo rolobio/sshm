@@ -53,17 +53,17 @@ class TestReal(unittest.TestCase):
         Login to the local machine and pass a file object through stdin.
         """
         contents = b'hello'
-        file_handle = _get_temp_file(contents)
 
-        results_list = list(sshm('localhost', 'cat', stdin=file_handle))
-        result = results_list[0]
-        self.assertEqual(result['return_code'], 0)
-        self.assertEqual('hello', result['stdout'])
-        # We expect a unicode string.  Python3.x's strings are unicode.
-        try:
-            self.assertIsInstance(result['stdout'], unicode)
-        except NameError:
-            self.assertIsInstance(result['stdout'], str)
+        with _get_temp_file(contents) as file_handle:
+            results_list = list(sshm('localhost', 'cat', stdin=file_handle))
+            result = results_list[0]
+            self.assertEqual(result['return_code'], 0)
+            self.assertEqual('hello', result['stdout'])
+            # We expect a unicode string.  Python3.x's strings are unicode.
+            try:
+                self.assertIsInstance(result['stdout'], unicode)
+            except NameError:
+                self.assertIsInstance(result['stdout'], str)
 
 
     def test_localhost_multi(self):
@@ -87,19 +87,20 @@ class TestReal(unittest.TestCase):
         Binary files are transfered correctly using STDIN.
         """
         contents = os.urandom(10000)
-        file_handle = _get_temp_file(contents)
 
-        tfile_handle = tempfile.NamedTemporaryFile()
+        with _get_temp_file(contents) as file_handle, \
+        tempfile.NamedTemporaryFile() as tfile_handle:
+            results_list = list(sshm('localhost',
+                 'cat > %s' % tfile_handle.name, stdin=file_handle)
+                 )
+            result = results_list[0]
+            self.assertEqual(0, result['return_code'])
 
-        results_list = list(sshm('localhost', 'cat > %s' % tfile_handle.name, stdin=file_handle))
-        result = results_list[0]
-        self.assertEqual(0, result['return_code'])
+            self.assertTrue(os.path.isfile(tfile_handle.name))
 
-        self.assertTrue(os.path.isfile(tfile_handle.name))
-
-        # Read the contents of the copied file, make sure they are intact.
-        with open(tfile_handle.name, 'rb') as tfile_handle:
-            self.assertEqual(tfile_handle.read(), contents)
+            # Read the contents of the copied file, make sure they are intact.
+            with open(tfile_handle.name, 'rb') as tfile_handle:
+                self.assertEqual(tfile_handle.read(), contents)
 
 
 

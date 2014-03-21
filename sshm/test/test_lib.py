@@ -387,45 +387,15 @@ class Test_sshm2(unittest.TestCase):
 
             self.assertEqual(kwargs, {})
 
-            thread_num, context, url, port, command, extra_arguments = args
+            thread_num, context, url, port, command, extra_arguments, stdin = args
             self.assertEqual(int, type(thread_num))
             self.assertEqual(zmq.Context, type(context))
             self.assertEqual(expected_url, url)
             self.assertEqual('', port)
             self.assertEqual('foo', command)
             self.assertEqual(extra_arguments, extra_arguments)
+            self.assertEqual(type(stdin), type(memoryview(bytes())))
 
         lib.ssh = orig
-
-
-    def test_sshm_stdin(self):
-        """
-        sshm should pass the contents of stdin to any request on
-        lib.REQUESTS_URL.
-        """
-        import tempfile
-        stdin_contents = b'foo'
-        fh = tempfile.NamedTemporaryFile('wb', delete=False)
-        fh.write(stdin_contents)
-        fh.seek(0)
-        fh = open(fh.name, 'r')
-
-        def side_effect(thread_num, context, *a, **kw):
-            sink = context.socket(zmq.PUSH)
-            sink.connect(lib.SINK_URL)
-
-            requests = context.socket(zmq.REQ)
-            requests.connect(lib.REQUESTS_URL)
-            requests.send_unicode('get stdin')
-
-            sink.send_pyobj({'stdin_contents':requests.recv_pyobj(), 'thread_num':thread_num})
-        orig = lib.ssh
-        lib.ssh = MagicMock(side_effect=side_effect)
-
-        results_list = list(lib.sshm('example.com', 'exit', stdin=fh))
-        self.assertEqual(results_list[0]['stdin_contents'], stdin_contents)
-
-        lib.ssh = orig
-
 
 
