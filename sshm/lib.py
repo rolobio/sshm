@@ -94,9 +94,8 @@ def popen(cmd, stdin, stdout, stderr): # pragma: no cover
 
 # ZMQ urls used to connect sshm and ssh
 SINK_URL = 'inproc://sink'
-REQUESTS_URL = 'inproc://requests'
 
-def ssh(thread_num, context, url, port, command, extra_arguments):
+def ssh(thread_num, context, url, port, command, extra_arguments, stdin=None):
     """
     Create an SSH connection to 'url' on port 'port'.  Execute 'command' and
     pass any stdin to this ssh session.  Return the results via ZMQ (SINK_URL).
@@ -115,6 +114,9 @@ def ssh(thread_num, context, url, port, command, extra_arguments):
     @param extra_arguments: Pass these extra arguments to the ssh call.
     @type extra_arguments: list
 
+    @param stdin: A memoryview object containing sshm's stdin.
+    @type stdin: memory
+
     @returns: None
     """
     # This is the basic result that we send back
@@ -127,12 +129,6 @@ def ssh(thread_num, context, url, port, command, extra_arguments):
     # Send the results to this sink
     sink = context.socket(zmq.PUSH)
     sink.connect(SINK_URL)
-
-    # Get stdin
-    requests = context.socket(zmq.REQ)
-    requests.connect(REQUESTS_URL)
-    requests.send_unicode('get stdin')
-    stdin = requests.recv_pyobj()
 
     try:
         cmd = ['ssh',]
@@ -180,7 +176,6 @@ def ssh(thread_num, context, url, port, command, extra_arguments):
     sink.send_pyobj(result)
 
     sink.close()
-    requests.close()
 
 
 
@@ -214,7 +209,11 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     @returns: A list containing (success, handle, message) from each method
         call.
     """
-    # Read in the contents of stdin
+    context = zmq.Context()
+    # The results of each ssh call is reported to this sink
+    sink = context.socket(zmq.PULL)
+    sink.bind(SINK_URL)
+
     if stdin:
         if sys.version_info[:1] <= (2, 7): # pragma: no cover version specific
             stdin_contents = stdin.read()
@@ -222,52 +221,32 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
             stdin_contents = stdin.buffer.read()
         stdin.close()
     else:
-        stdin_contents = None
-
-    context = zmq.Context()
-    # The results of each ssh call is reported to this sink
-    sink = context.socket(zmq.PULL)
-    sink.bind(SINK_URL)
-    # Requests for the contents of STDIN will come to this rep
-    requests = context.socket(zmq.REP)
-    requests.bind(REQUESTS_URL)
+        # No stdin provided
+        stdin_contents = bytes()
 
     # Start each SSH connection in it's own thread
     threads = []
     thread_num = 0
     for url, port in expand_servers(servers):
+        stdin_mv = memoryview(stdin_contents)
         thread = threading.Thread(target=ssh,
                 # Provide the arguments that ssh needs.
-                args=(thread_num, context, url, port, command, extra_arguments)
+                args=(thread_num, context, url, port, command, extra_arguments, stdin_mv)
                 )
         thread.start()
         threads.append(thread)
         thread_num += 1
 
-    # Listen for stdin requests and job results
-    poller = zmq.Poller()
-    poller.register(sink, zmq.POLLIN)
-    poller.register(requests, zmq.POLLIN)
-
-    # While any thread is active, respond to any requests.
     # If a thread sends a result, clean it up.
     completed_threads = 0
     while completed_threads != len(threads):
-        sockets = dict(poller.poll())
-        if sockets.get(sink) == zmq.POLLIN:
-            # Got a result in the sink!
-            results = sink.recv_pyobj()
-            completed_threads += 1
-            yield results
-            threads[results['thread_num']].join()
-        elif sockets.get(requests) == zmq.POLLIN:
-            if requests.recv_unicode() == 'get stdin':
-                # A thread requests the contents of STDIN, send it
-                requests.send_pyobj(stdin_contents)
+        results = sink.recv_pyobj()
+        completed_threads += 1
+        yield results
+        threads[results['thread_num']].join()
 
     # Cleanup
     sink.close()
-    requests.close()
     context.term()
 
 
