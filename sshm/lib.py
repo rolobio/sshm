@@ -1,10 +1,4 @@
 #! /usr/bin/env python3
-"""
-The important function in this module is "sshm".  It can be used directly to ssh
-into multiple machines at one.  The rest of the function and variables in this
-module are only used to support "sshm".
-"""
-
 import re
 import subprocess
 import sys
