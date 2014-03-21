@@ -1,4 +1,8 @@
 #! /usr/bin/env python3
+"""
+This module tests the basic functionality of sshm without performing a real ssh
+command.
+"""
 from sshm import lib
 from sshm.main import get_argparse_args
 
@@ -7,8 +11,14 @@ import unittest
 import zmq
 
 class TestRegex(unittest.TestCase):
+    """
+    Test that the regex variables parse as expected.
+    """
 
     def test_EXTRACT_URIS(self):
+        """
+        The EXTRACT_URIS regex should extract a list of URIs from a string.
+        """
         tests = [
             ('example.com',
                 ['example.com'],
@@ -36,6 +46,10 @@ class TestRegex(unittest.TestCase):
 
 
     def test_PARSE_URI(self):
+        """
+        PARSE_URI should be able to extract the ssh relevant components from a
+        URI.
+        """
         tests = [
             ('example.com',
                 ('', 'example.com', '', '', '')
@@ -61,8 +75,15 @@ class TestRegex(unittest.TestCase):
 
 
 class TestRegexFuncs(unittest.TestCase):
+    """
+    Test that the regex functions use the regex as expected.
+    """
 
     def test_expand_ranges(self):
+        """
+        This function should convert a string of comma and dash seperated
+        integers and convert them into a list of number strings.
+        """
         tests = [
             ('1',
                 ['1',],
@@ -96,6 +117,9 @@ class TestRegexFuncs(unittest.TestCase):
 
 
     def test_expand_servers(self):
+        """
+        expand_servers should convert abbreviated server uris into URI tuples.
+        """
         tests = [
             ('example.com',
                 [('example.com', '')],
@@ -161,6 +185,9 @@ class TestRegexFuncs(unittest.TestCase):
 class TestFuncs(unittest.TestCase):
 
     def test_get_argparse_args(self):
+        """
+        Simple examples of how the console should react to certain arguments.
+        """
         # Valid
         provided = ['example.com', 'ls']
         args, command, extra_args = get_argparse_args(provided)
@@ -214,35 +241,39 @@ class TestFuncs(unittest.TestCase):
 
 
 
+def fake_subprocess(stdout, stderr, returncode):
+    proc = MagicMock()
+    proc.returncode = returncode
+    proc.communicate.return_value = (stdout, stderr)
+
+    sub = MagicMock()
+    sub.popen.return_value = proc
+
+    return (sub, proc)
+
+
+def fake_context():
+    context = MagicMock()
+    sock = MagicMock()
+    context.socket.return_value = sock
+    return context, sock
+
+
 class Test_ssh(unittest.TestCase):
-
-    def fake_subprocess(self, stdout, stderr, returncode):
-        proc = MagicMock()
-        proc.returncode = returncode
-        proc.communicate.return_value = (stdout, stderr)
-
-        sub = MagicMock()
-        sub.Popen.return_value = proc
-
-        return (sub, proc)
-
-
-    def fake_context(self):
-        context = MagicMock()
-        sock = MagicMock()
-        context.socket.return_value = sock
-        return context, sock
-
+    """
+    Test that the ssh function sends the correct command and returns the
+    expected value.
+    """
 
     def test_port(self):
         """
         The ssh command arguments change when a port is specified.
         """
-        sub, proc = self.fake_subprocess('', '', 0)
-        orig = lib.Popen
-        lib.Popen = sub.Popen
+        sub, proc = fake_subprocess('', '', 0)
+        orig = lib.popen
+        lib.popen = sub.popen
 
-        context, socket = self.fake_context()
+        context, socket = fake_context()
         lib.ssh(1, context, 'asdf', '9678', 'command', [])
 
         # Get the result that was sent in the socket
@@ -251,55 +282,37 @@ class Test_ssh(unittest.TestCase):
         self.assertEqual(cmd,
                 ['ssh', 'asdf', '-p', '9678', 'command'])
 
-        lib.Popen = orig
+        lib.popen = orig
 
 
     def test_exception(self):
         """
         An exception is passed in the results.
         """
-        sub, proc = self.fake_subprocess('', '', 0)
+        sub, proc = fake_subprocess('', '', 0)
         proc.communicate.side_effect = Exception('Oh no!')
-        orig = lib.Popen
-        lib.Popen = sub.Popen
+        orig = lib.popen
+        lib.popen = sub.popen
 
-        context, socket = self.fake_context()
+        context, socket = fake_context()
         lib.ssh(1, context, 'asdf', '9678', 'command', [])
         results = socket.send_pyobj.call_args_list[0][0][0]
 
         self.assertIn('traceback', results)
         self.assertIn('Oh no!', results['traceback'])
 
-        lib.Popen = orig
+        lib.popen = orig
 
 
 
 class Test_sshm(unittest.TestCase):
 
-    def fake_subprocess(self, stdout, stderr, returncode):
-        proc = MagicMock()
-        proc.returncode = returncode
-        proc.communicate.return_value = (stdout, stderr)
-
-        sub = MagicMock()
-        sub.Popen.return_value = proc
-
-        return (sub, proc)
-
-
-    def fake_context(self):
-        context = MagicMock()
-        sock = MagicMock()
-        context.socket.return_value = sock
-        return context, sock
-
-
     def test_simple(self):
         """
         Test a simple sshm usage.
         """
-        sub, proc = self.fake_subprocess('', '', 0)
-        lib.Popen = sub.Popen
+        sub, proc = fake_subprocess('', '', 0)
+        lib.popen = sub.popen
 
         result_list = list(lib.sshm('example.com', 'exit'))
         self.assertEqual(1, len(result_list))
@@ -321,8 +334,8 @@ class Test_sshm(unittest.TestCase):
         """
         You can SSH into three servers at once.
         """
-        sub, proc = self.fake_subprocess('', '', 0)
-        lib.Popen = sub.Popen
+        sub, proc = fake_subprocess('', '', 0)
+        lib.popen = sub.popen
 
         results_list = list(lib.sshm('example[01-03].com', 'exit'))
         self.assertEqual(3, len(results_list))
@@ -348,7 +361,7 @@ class Test_sshm2(unittest.TestCase):
             Send empty results.
             """
             sink = context.socket(zmq.PUSH)
-            sink.connect(lib.sink_url)
+            sink.connect(lib.SINK_URL)
             sink.send_pyobj({'thread_num':thread_num,})
         orig = lib.ssh
         lib.ssh = MagicMock(side_effect=side_effect)
@@ -388,7 +401,7 @@ class Test_sshm2(unittest.TestCase):
     def test_sshm_stdin(self):
         """
         sshm should pass the contents of stdin to any request on
-        lib.requests_url.
+        lib.REQUESTS_URL.
         """
         import tempfile
         stdin_contents = b'foo'
@@ -399,10 +412,10 @@ class Test_sshm2(unittest.TestCase):
 
         def side_effect(thread_num, context, *a, **kw):
             sink = context.socket(zmq.PUSH)
-            sink.connect(lib.sink_url)
+            sink.connect(lib.SINK_URL)
 
             requests = context.socket(zmq.REQ)
-            requests.connect(lib.requests_url)
+            requests.connect(lib.REQUESTS_URL)
             requests.send_unicode('get stdin')
 
             sink.send_pyobj({'stdin_contents':requests.recv_pyobj(), 'thread_num':thread_num})
