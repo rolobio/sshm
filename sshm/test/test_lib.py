@@ -318,7 +318,6 @@ class Test_sshm(unittest.TestCase):
         self.assertEqual(1, len(result_list))
         self.assertEqual(result_list[0],
                 {
-                    'traceback':'',
                     'stdout': '',
                     'url': 'example.com',
                     'cmd': ['ssh', 'example.com', 'exit'],
@@ -343,7 +342,7 @@ class Test_sshm(unittest.TestCase):
                 len(set([r['url'] for r in results_list]))
                 )
         for result in results_list:
-            self.assertEqual('', result['traceback'])
+            self.assertNotIn('traceback', result)
             self.assertIn(result['url'],
                     ['example01.com', 'example02.com', 'example03.com']
                     )

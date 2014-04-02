@@ -158,8 +158,6 @@ def ssh(thread_num, context, url, port, command, extra_arguments, stdin=None):
         result.update({'return_code':proc.returncode,
                     'stdout':stdout,
                     'stderr':stderr,
-                    # Nothing to report in traceback
-                    'traceback':'',
                     }
                 )
     except:
