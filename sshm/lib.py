@@ -10,6 +10,7 @@ __all__ = ['sshm']
 
 
 MATCH_RANGES = re.compile(r'(?:(\d+)(?:,|$))|(?:(\d+-\d+))')
+
 def expand_ranges(to_expand):
     """
     Convert a comma-seperated range of integers into a list. Keep any zero
@@ -53,6 +54,7 @@ def create_uri(user, body, num, suffix):
 
 EXTRACT_URIS = re.compile(r'([@\w._:-]+(?:\[[\d,-]+\])?(?:[@\w._:-]+)?)(?:,|$)')
 PARSE_URI = re.compile(r'(?:([\w._-]+)@)?(?:([\w._-]+)(?:\[([\d,-]+)\])?([\w._-]+)?)(?::([\d+]+))?$')
+
 def expand_servers(server_list):
     """
     Create a URI tuple for each server in the list.
