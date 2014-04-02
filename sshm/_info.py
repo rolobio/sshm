@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 # This is the official version of sshm
-__version__ = '0.8.6'
+__version__ = '0.8.7'
 
 __long_description__ = '''
     SSH Multi v%s. SSH into multiple machines at once.
