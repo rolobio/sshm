@@ -1,4 +1,5 @@
-pyzmq
-mock
 coverage
+coveralls
+mock
 pyflakes
+pyzmq

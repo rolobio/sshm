@@ -17,3 +17,6 @@ script:
   - "sshm --version"
     # sshm should be avaliable in the python console
   - "python -c 'from sshm.lib import sshm'"
+after_success:
+  # Submit coverage report to coveralls
+  coveralls
