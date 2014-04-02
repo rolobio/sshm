@@ -23,7 +23,7 @@ or, automatic installation:
 Import directly from sshm:
 
 ```python
-from sshm import sshm
+from sshm.lib import sshm
 
 for result in sshm('example[5,8].com', 'ps aux | wc -l'):
     print(result)

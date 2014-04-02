@@ -16,4 +16,4 @@ script:
     # output the version into the console
   - "sshm --version"
     # sshm should be avaliable in the python console
-  - "python -c 'from sshm import sshm'"
+  - "python -c 'from sshm.lib import sshm'"
