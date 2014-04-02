@@ -6,7 +6,7 @@ command.
 from sshm import lib
 from sshm.main import get_argparse_args
 
-from mock import MagicMock, call
+from mock import MagicMock
 import unittest
 import zmq
 
