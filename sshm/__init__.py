@@ -1,3 +1,4 @@
+# pramga: no cover
 """
 This module can be used to ssh into multiple servers at once.
 
