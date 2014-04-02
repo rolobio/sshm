@@ -312,6 +312,7 @@ class Test_sshm(unittest.TestCase):
         Test a simple sshm usage.
         """
         sub, proc = fake_subprocess('', '', 0)
+        orig = lib.popen
         lib.popen = sub.popen
 
         result_list = list(lib.sshm('example.com', 'exit'))
@@ -328,12 +329,15 @@ class Test_sshm(unittest.TestCase):
                     }
                 )
 
+        lib.popen = orig
+
 
     def test_triple(self):
         """
         You can SSH into three servers at once.
         """
         sub, proc = fake_subprocess('', '', 0)
+        orig = lib.popen
         lib.popen = sub.popen
 
         results_list = list(lib.sshm('example[01-03].com', 'exit'))
@@ -346,6 +350,8 @@ class Test_sshm(unittest.TestCase):
             self.assertIn(result['url'],
                     ['example01.com', 'example02.com', 'example03.com']
                     )
+
+        lib.popen = orig
 
 
 class Test_sshm2(unittest.TestCase):
