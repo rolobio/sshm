@@ -7,7 +7,7 @@ python:
 install: "pip install -r requirements.tests.txt"
 script:
     # Run tests with coverage
-  - 'coverage run --source="."  --omit="*test*" setup.py test'
+  - 'coverage run setup.py test'
   - "coverage report -m"
     # install sshm
   - "python setup.py install"
@@ -17,3 +17,6 @@ script:
   - "sshm --version"
     # sshm should be avaliable in the python console
   - "python -c 'from sshm.lib import sshm'"
+after_success:
+  # Submit coverage report to coveralls
+  coveralls

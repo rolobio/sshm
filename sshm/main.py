@@ -40,7 +40,7 @@ def get_argparse_args(args=None):
 
 
 
-def main(): # pragma: no cover
+def main():
     """
     Run SSHM using console provided arguments.
 
@@ -87,6 +87,6 @@ def main(): # pragma: no cover
         sys.exit(1)
 
 
-if __name__ == '__main__': # pragma: no cover
+if __name__ == '__main__':
     main()
 

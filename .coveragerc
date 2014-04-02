@@ -1,0 +1,9 @@
+[run]
+source = sshm
+
+[report]
+omit = */test/*
+exclude_lines =
+    pragma: no cover
+    def main
+    if __name__ == .__main__.:
