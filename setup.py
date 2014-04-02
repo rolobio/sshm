@@ -1,4 +1,3 @@
-import os
 from setuptools import setup
 from sshm._info import __version__, __long_description__
 
