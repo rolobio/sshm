@@ -1,6 +1,6 @@
 # SSHM
 ## About
-[![Build Status](http://img.shields.io/travis/joyent/node.svg)](https://travis-ci.org/rolobio/sshm)
+[![Build Status](http://img.shields.io/travis/rolobio/sshm.svg)](https://travis-ci.org/rolobio/sshm)
 [![Coverage Status](https://coveralls.io/repos/rolobio/sshm/badge.png)](https://coveralls.io/r/rolobio/sshm?branch=coveralls-install)
 [![Version](http://img.shields.io/pypi/v/sshm.svg)](https://pypi.python.org/pypi/sshm/)
 [![Egg Status](https://pypip.in/egg/sshm/badge.png)](https://pypi.python.org/pypi/sshm/)
