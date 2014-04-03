@@ -1,10 +1,10 @@
 # SSHM
 ## About
-[![Build Status](https://travis-ci.org/rolobio/sshm.png?branch=master)](https://travis-ci.org/rolobio/sshm)
+[![Build Status](http://img.shields.io/travis/joyent/node.svg)](https://travis-ci.org/rolobio/sshm)
 [![Coverage Status](https://coveralls.io/repos/rolobio/sshm/badge.png)](https://coveralls.io/r/rolobio/sshm?branch=coveralls-install)
-[![Version](https://pypip.in/v/sshm/badge.png)](https://pypi.python.org/pypi/sshm/)
+[![Version](http://img.shields.io/pypi/v/sshm.svg)](https://pypi.python.org/pypi/sshm/)
 [![Egg Status](https://pypip.in/egg/sshm/badge.png)](https://pypi.python.org/pypi/sshm/)
-[![Downloads](https://pypip.in/d/sshm/badge.png?period=month)](https://pypi.python.org/pypi/sshm/)
+[![Downloads](http://img.shields.io/pypi/dm/sshm.svg)](https://pypi.python.org/pypi/sshm/)
 [![License](https://pypip.in/license/sshm/badge.png)](https://gnu.org/licenses/gpl.html)
 
 SSH Multiple. SSH into multiple machines and execute a single command. Each ssh
