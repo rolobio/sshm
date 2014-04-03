@@ -3,7 +3,7 @@
 This module can be used to ssh into multiple servers at once.
 
 Example:
-    from sshm import sshm
+    from sshm.lib import sshm
 
     for result in sshm('example[5,8].com', 'ps aux | wc -l'):
             print(result)

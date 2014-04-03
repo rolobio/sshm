@@ -10,7 +10,7 @@ try: # pragma: no cover version specific
 except ImportError: # pragma: no cover version specific
     from sshm.lib import sshm
 
-__all__ = ['sshm']
+__all__ = ['main']
 
 
 def get_argparse_args(args=None):
