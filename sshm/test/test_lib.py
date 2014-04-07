@@ -10,175 +10,63 @@ from mock import MagicMock
 import unittest
 import zmq
 
-class TestRegex(unittest.TestCase):
-    """
-    Test that the regex variables parse as expected.
-    """
 
-    def test_EXTRACT_URIS(self):
+class TestTargetExpansion(unittest.TestCase):
+
+
+    def test_is_url(self):
         """
-        The EXTRACT_URIS regex should extract a list of URIs from a string.
+        This is used to detect if a string contains alpha characters.
         """
-        tests = [
-            ('example.com',
-                ['example.com'],
-            ),
-            ('example.com,example2.com',
-                ['example.com', 'example2.com'],
-            ),
-            ('mail.example.com',
-                ['mail.example.com'],
-            ),
-            ('user@example.com:500',
-                ['user@example.com:500'],
-            ),
-            ('user.name@example.com',
-                ['user.name@example.com'],
-            ),
-            ('user@example.com:500,exam_ple.com',
-                ['user@example.com:500', 'exam_ple.com'],
-            ),
-        ]
+        prov_exp = [
+                ('a', True),
+                ('example.com', True),
+                ('mail1.example.com', True),
+                ('10.1.2.3', False),
+                ]
 
-        for uris, expected in tests:
-            output = lib.EXTRACT_URIS.findall(uris)
-            self.assertEqual(expected, output)
+        for provided, expected in prov_exp:
+            self.assertEqual(lib.is_url(provided), expected, provided)
 
 
-    def test_PARSE_URI(self):
+    def test_target_expansion(self):
         """
-        PARSE_URI should be able to extract the ssh relevant components from a
-        URI.
+        The target specification should match Nmap's capabilities.
+
+        Example:
+            10.1.2.3,192.168.0.1-254,10.0.2-4,0-255,mail[01-5].example.com:1234
+            [
+               '10.2.3.3',
+               '192.168.0.1',
+               '192.168.0.2',
+               ...
+               '192.168.0.254',
+               '10.0.2.0',
+               '10.0.2.1',
+               ...
+               '10.0.2.255',
+               '10.0.3.0',
+               '10.0.3.1',
+               ...
+               '10.0.3.255',
+               '10.0.4.0',
+               '10.0.j.1',
+               ...
+               '10.0.4.255',
+               'mail01.example.com:1234',
+               'mail02.example.com:1234',
+               'mail03.example.com:1234',
+               'mail04.example.com:1234',
+               'mail05.example.com:1234',
+           ]
         """
-        tests = [
-            ('example.com',
-                ('', 'example.com', '', '', '')
-            ),
-            ('user@example.com',
-                ('user', 'example.com', '', '', '')
-            ),
-            ('user@example.com:500',
-                ('user', 'example.com', '', '', '500')
-            ),
-            ('example[1-5].com',
-                ('', 'example', '1-5', '.com', '')
-            ),
-            ('user@example[1-5].com:22',
-                ('user', 'example', '1-5', '.com', '22')
-            ),
-        ]
+        prov_exp = [
+                ('example.com', ['example.com']),
+                ]
 
-        for uri, expected in tests:
-            output = lib.PARSE_URI.match(uri).groups('')
-            self.assertEqual(expected, output)
-
-
-
-class TestRegexFuncs(unittest.TestCase):
-    """
-    Test that the regex functions use the regex as expected.
-    """
-
-    def test_expand_ranges(self):
-        """
-        This function should convert a string of comma and dash seperated
-        integers and convert them into a list of number strings.
-        """
-        tests = [
-            ('1',
-                ['1',],
-            ),
-            ('10',
-                ['10',],
-            ),
-            ('01',
-                ['01',],
-            ),
-            ('01-06',
-                ['01', '02', '03', '04', '05', '06'],
-            ),
-            ('01-03,7',
-                ['01', '02', '03', '7'],
-            ),
-            ('5-7,9',
-                ['5', '6', '7', '9'],
-            ),
-            ('003-006',
-                ['003', '004', '005', '006'],
-            ),
-            ('1,01,05-8,0006-0008,12,100',
-                ['1', '01', '05', '06', '07', '08', '0006', '0007', '0008', '12', '100'],
-            ),
-        ]
-
-        for range_str, expected in tests:
-            output = lib.expand_ranges(range_str)
-            self.assertEqual(expected, output)
-
-
-    def test_expand_servers(self):
-        """
-        expand_servers should convert abbreviated server uris into URI tuples.
-        """
-        tests = [
-            ('example.com',
-                [('example.com', '')],
-                ),
-            ('mail.example.com',
-                [('mail.example.com', '')],
-                ),
-            ('example.com,mail.example.com',
-                [('example.com', ''),
-                ('mail.example.com', '')
-                ],
-                ),
-            ('mail.exa_mple3.com',
-                [('mail.exa_mple3.com', '')],
-                ),
-            ('mail[1-3].example.com',
-                [('mail1.example.com', ''),
-                ('mail2.example.com', ''),
-                ('mail3.example.com', ''),
-                ],
-                ),
-            ('mail[1-3].example.com,example[5-7,9].com',
-                [('mail1.example.com', ''),
-                ('mail2.example.com', ''),
-                ('mail3.example.com', ''),
-                ('example5.com', ''),
-                ('example6.com', ''),
-                ('example7.com', ''),
-                ('example9.com', ''),
-                ],
-                ),
-            (
-                'example[1-3].com:123',
-                [
-                    ('example1.com', '123'),
-                    ('example2.com', '123'),
-                    ('example3.com', '123'),
-                    ],
-                ),
-            (
-                'example[1-3].com:123,mail1.example.com:789',
-                [
-                    ('example1.com', '123'),
-                    ('example2.com', '123'),
-                    ('example3.com', '123'),
-                    ('mail1.example.com', '789'),
-                    ],
-                ),
-        ]
-        for servers_str, expected_list in tests:
-            output = lib.expand_servers(servers_str)
-            assert len(output) == len(expected_list), \
-                'Expected is not a long as output. Add more to the test.'
-            for uri_port, expected in zip(output, expected_list):
-                uri, port = uri_port
-                expected_uri, expected_port = expected
-
-                self.assertEqual(expected_uri, uri)
-                self.assertEqual(expected_port, port)
+        for provided, expected in prov_exp:
+            self.assertEqual(lib.target_expansion(provided),
+                    expected)
 
 
 

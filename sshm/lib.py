@@ -9,78 +9,18 @@ from traceback import format_exc
 __all__ = ['sshm']
 
 
-MATCH_RANGES = re.compile(r'(?:(\d+)(?:,|$))|(?:(\d+-\d+))')
+# This is used to check if the target contains any alpha characters.
+_alpha = re.compile(r'[a-zA-Z]')
 
-def expand_ranges(to_expand):
+def is_url(target):
+    return bool(_alpha.search(target))
+
+
+def target_expansion(input_str):
     """
-    Convert a comma-seperated range of integers into a list. Keep any zero
-    padding the numbers may have.
-
-        Example: "1,4,07-10" to ['1', '4', '07', '08', '09', '10']
-
-    @type to_expand: str
-    @param to_expand: Expand this string into a list of integers.
+    Expand a list of targets into invividual URLs/IPs and their respective
+    ports. Preserve any zero-padding the range may contain.
     """
-    nums = []
-    for single, range_str in MATCH_RANGES.findall(to_expand):
-        if single:
-            nums.append(single)
-        if range_str:
-            i, j = range_str.split('-')
-            # Create a string that will pad the integer with its current amount
-            # of zeroes.
-            # Example: if i is '03' the string will be '%0.2d'
-            padding = '%'+'0.%d' % len(i) +'d'
-            for k in range(int(i), int(j)+1):
-                nums.append(padding % k)
-    return nums
-
-
-def create_uri(user, body, num, suffix):
-    """
-    Use the provided parameters to create a URI.
-
-    @rtype: str
-        Example: 'user@host3'
-    """
-    uri = ''
-    if user:
-        uri += user+'@'
-    uri += body
-    uri += num
-    uri += suffix
-    return uri
-
-
-EXTRACT_URIS = re.compile(r'([@\w._:-]+(?:\[[\d,-]+\])?(?:[@\w._:-]+)?)(?:,|$)')
-PARSE_URI = re.compile(r'(?:([\w._-]+)@)?(?:([\w._-]+)(?:\[([\d,-]+)\])?([\w._-]+)?)(?::([\d+]+))?$')
-
-def expand_servers(server_list):
-    """
-    Create a URI tuple for each server in the list.
-
-        Example: 'example[3-5].com,example7.com:245' to
-            [
-                ('example3.com', ''),
-                ('example4.com', ''),
-                ('example5.com' ''),
-                ('example7.com', '245'),
-            ]
-    """
-    uris = []
-    for uri in EXTRACT_URIS.findall(server_list):
-        # There should only be one URI in "uri", so we'll match it and get
-        # the groups.
-        user, body, range_str, suffix, port = PARSE_URI.match(uri).groups('')
-        if range_str:
-            # There are multiple hosts, add a URI for each
-            for num in expand_ranges(range_str):
-                uri = create_uri(user, body, num, suffix)
-                uris.append((uri, port))
-        else:
-            uri = create_uri(user, body, '', suffix)
-            uris.append((uri, port))
-    return uris
 
 
 def popen(cmd, stdin, stdout, stderr): # pragma: no cover
@@ -227,11 +167,11 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     # Start each SSH connection in it's own thread
     threads = []
     thread_num = 0
-    for url, port in expand_servers(servers):
+    for uri in target_expansion(servers):
         stdin_mv = memoryview(stdin_contents)
         thread = threading.Thread(target=ssh,
                 # Provide the arguments that ssh needs.
-                args=(thread_num, context, url, port, command, extra_arguments, stdin_mv)
+                args=(thread_num, context, uri, command, extra_arguments, stdin_mv)
                 )
         thread.start()
         threads.append(thread)
