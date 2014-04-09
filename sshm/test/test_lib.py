@@ -45,7 +45,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(extra_args, [provided[2],])
 
 
-    def test_target_expansion(self):
+    def test_uri_expansion(self):
         """
         The target specification should match Nmap's capabilities.
 
@@ -90,8 +90,23 @@ class TestFuncs(unittest.TestCase):
                 ]
 
         for provided, expected in prov_exp:
-            self.assertEqual(lib.target_expansion(provided),
+            self.assertEqual(lib.uri_expansion(provided),
                     expected)
+
+    def test_invalid_uri_expansion(self):
+        """
+        Invalid expansions should raise an Exception.
+        """
+        prov = [
+                '10.1.2.3-2',
+                '10.2',
+                'example[2-1].com',
+                '',
+                None
+                ]
+
+        for provided in prov:
+            self.assertRaises(ValueError, lib.uri_expansion, provided)
 
 
     def test_expand_ranges(self):

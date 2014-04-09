@@ -7,7 +7,7 @@ import zmq
 from itertools import product
 from traceback import format_exc
 
-__all__ = ['sshm', 'target_expansion']
+__all__ = ['sshm', 'uri_expansion']
 
 
 # This is used to parse a range string
@@ -53,41 +53,56 @@ def create_uri(user, target, port):
 
 
 _parse_uri = re.compile(r'(?:(\w+)@)?(?:(?:([a-zA-Z][\w.]+)(?:\[([\d,-]+)\])?([\w.]+)?)|([\d,.-]+))(?::(\d+))?,?')
+invalid_urls = ValueError('Invalid URIs provided!')
 
-def target_expansion(input_str):
+def uri_expansion(input_str):
     """
-    Expand a list of targets into invividual URLs/IPs and their respective
-    ports. Preserve any zero-padding the range may contain.
+    Expand a list of uris into invividual URLs/IPs and their respective
+    ports and usernames. Preserve any zero-padding the range may contain.
 
-    @param input_str: The targets to expand
+    @param input_str: The uris to expand
     @type input_str: str
     """
-    targets = []
-    uris = _parse_uri.findall(input_str)
+    new_uris = []
+    try:
+        uris = _parse_uri.findall(input_str)
+    except TypeError:
+        raise invalid_urls
+
     for uri in uris:
         user, prefix, range_str, suffix, ip_addr, port = uri
 
         if (prefix or suffix) and range_str:
             # Expand the URL
             products = [''.join([i,j,k]) for i, j, k in product([prefix,], expand_ranges(range_str), [suffix,])]
-            targets.extend([create_uri(user, p, port) for p in products])
+            new_uris.extend([create_uri(user, p, port) for p in products])
         elif ip_addr:
+            # Check the length of this IP address
+            if ip_addr.count('.') != 3:
+                raise invalid_urls
+
             if '-' in ip_addr or ',' in ip_addr:
                 eo = [expand_ranges(i) for i in ip_addr.split('.')]
+
                 # Create all products for each octet, add these to the next
                 # octet.
                 products = ['.'.join([i,j]) for i,j in product(eo[2], eo[3])]
                 products = ['.'.join([i,j]) for i,j in product(eo[1], products)]
                 products = ['.'.join([i,j]) for i,j in product(eo[0], products)]
-                # Extend targets with the new URIs
-                targets.extend([create_uri(user, p, port) for p in products])
+                # Extend new_uris with the new URIs
+                new_uris.extend([create_uri(user, p, port) for p in products])
             else:
                 # No expansion necessary for IP
-                targets.append(create_uri(user, ip_addr, port))
+                new_uris.append(create_uri(user, ip_addr, port))
         else:
             # No expansion necessary for URL
-            targets.append(create_uri(user, prefix+suffix, port))
-    return targets
+            new_uris.append(create_uri(user, prefix+suffix, port))
+
+    # Some targets must be specified
+    if not new_uris:
+        raise invalid_urls
+
+    return new_uris
 
 
 def popen(cmd, stdin, stdout, stderr): # pragma: no cover
@@ -233,7 +248,7 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     # Start each SSH connection in it's own thread
     threads = []
     thread_num = 0
-    for uri in target_expansion(servers):
+    for uri in uri_expansion(servers):
         stdin_mv = memoryview(stdin_contents)
         thread = threading.Thread(target=ssh,
                 # Provide the arguments that ssh needs.
