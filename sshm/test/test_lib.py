@@ -11,7 +11,38 @@ import unittest
 import zmq
 
 
-class TestTargetExpansion(unittest.TestCase):
+class TestFuncs(unittest.TestCase):
+
+    def test_get_argparse_args(self):
+        """
+        Simple examples of how the console should react to certain arguments.
+        """
+        # Valid
+        provided = ['example.com', 'ls']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, 'example.com')
+        self.assertEqual(command, 'ls')
+        self.assertEqual(extra_args, [])
+
+        # Valid
+        provided = ['example[1-3].com', 'exit']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, 'example[1-3].com')
+        self.assertEqual(command, 'exit')
+        self.assertEqual(extra_args, [])
+
+        # Lack of required arguments
+        provided = ['example.com']
+        self.assertRaises(SystemExit, get_argparse_args, provided)
+        provided = []
+        self.assertRaises(SystemExit, get_argparse_args, provided)
+
+        # Extra arguments
+        provided = ['example[1-3].com', 'exit', '-o UserKnownHostsFile=/dev/null']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, 'example[1-3].com')
+        self.assertEqual(command, 'exit')
+        self.assertEqual(extra_args, [provided[2],])
 
 
     def test_is_url(self):
@@ -20,6 +51,7 @@ class TestTargetExpansion(unittest.TestCase):
         """
         prov_exp = [
                 ('a', True),
+                ('.', False),
                 ('example.com', True),
                 ('mail1.example.com', True),
                 ('10.1.2.3', False),
@@ -75,65 +107,6 @@ class TestTargetExpansion(unittest.TestCase):
 
 
 
-class TestFuncs(unittest.TestCase):
-
-    def test_get_argparse_args(self):
-        """
-        Simple examples of how the console should react to certain arguments.
-        """
-        # Valid
-        provided = ['example.com', 'ls']
-        args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example.com')
-        self.assertEqual(command, 'ls')
-        self.assertEqual(extra_args, [])
-
-        # Valid
-        provided = ['example[1-3].com', 'exit']
-        args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example[1-3].com')
-        self.assertEqual(command, 'exit')
-        self.assertEqual(extra_args, [])
-
-        # Lack of required arguments
-        provided = ['example.com']
-        self.assertRaises(SystemExit, get_argparse_args, provided)
-        provided = []
-        self.assertRaises(SystemExit, get_argparse_args, provided)
-
-        # Extra arguments
-        provided = ['example[1-3].com', 'exit', '-o UserKnownHostsFile=/dev/null']
-        args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example[1-3].com')
-        self.assertEqual(command, 'exit')
-        self.assertEqual(extra_args, [provided[2],])
-
-
-    def test_create_uri(self):
-        """
-        create_uri assembles them as expected.
-        """
-        self.assertEqual('example.com',
-                lib.create_uri('', 'example.com', '', '')
-                )
-        self.assertEqual('example01.com',
-                lib.create_uri('', 'example', '01', '.com')
-                )
-        self.assertEqual('example01',
-                lib.create_uri('', 'example', '01', '')
-                )
-        self.assertEqual('user@example',
-                lib.create_uri('user', 'example', '', '')
-                )
-        self.assertEqual('user@example.com',
-                lib.create_uri('user', 'example', '', '.com')
-                )
-        self.assertEqual('user@example10.com',
-                lib.create_uri('user', 'example', '10', '.com')
-                )
-
-
-
 def fake_subprocess(stdout, stderr, returncode):
     proc = MagicMock()
     proc.returncode = returncode
@@ -167,7 +140,7 @@ class Test_ssh(unittest.TestCase):
         lib.popen = sub.popen
 
         context, socket = fake_context()
-        lib.ssh(1, context, 'asdf', '9678', 'command', [])
+        lib.ssh(1, context, 'asdf:9678', 'command', [])
 
         # Get the result that was sent in the socket
         self.assertEqual(socket.send_pyobj.call_count, 1)
@@ -213,12 +186,11 @@ class Test_sshm(unittest.TestCase):
         self.assertEqual(result_list[0],
                 {
                     'stdout': '',
-                    'url': 'example.com',
+                    'uri': 'example.com',
                     'cmd': ['ssh', 'example.com', 'exit'],
                     'return_code': 0,
                     'stderr': '',
                     'thread_num':0,
-                    'port': ''
                     }
                 )
 
@@ -236,11 +208,11 @@ class Test_sshm(unittest.TestCase):
         results_list = list(lib.sshm('example[01-03].com', 'exit'))
         self.assertEqual(3, len(results_list))
         self.assertEqual(3,
-                len(set([r['url'] for r in results_list]))
+                len(set([r['uri'] for r in results_list]))
                 )
         for result in results_list:
             self.assertNotIn('traceback', result)
-            self.assertIn(result['url'],
+            self.assertIn(result['uri'],
                     ['example01.com', 'example02.com', 'example03.com']
                     )
 
@@ -271,7 +243,7 @@ class Test_sshm2(unittest.TestCase):
         for result in result_list:
             self.assertIn('thread_num', result)
 
-        expected_urls = [
+        expected_uris = [
                 'example01.com',
                 'example02.com',
                 'example03.com',
@@ -279,17 +251,16 @@ class Test_sshm2(unittest.TestCase):
 
         self.assertTrue(lib.ssh.called)
         # Verify each ssh function call
-        self.assertEqual(len(lib.ssh.call_args_list), len(expected_urls))
-        for args_list, expected_url in zip(lib.ssh.call_args_list, expected_urls):
+        self.assertEqual(len(lib.ssh.call_args_list), len(expected_uris))
+        for args_list, expected_uri in zip(lib.ssh.call_args_list, expected_uris):
             args, kwargs = args_list
 
             self.assertEqual(kwargs, {})
 
-            thread_num, context, url, port, command, extra_arguments, stdin = args
+            thread_num, context, uri, command, extra_arguments, stdin = args
             self.assertEqual(int, type(thread_num))
             self.assertEqual(zmq.Context, type(context))
-            self.assertEqual(expected_url, url)
-            self.assertEqual('', port)
+            self.assertEqual(expected_uri, uri)
             self.assertEqual('foo', command)
             self.assertEqual(extra_arguments, extra_arguments)
             self.assertEqual(type(stdin), type(memoryview(bytes())))

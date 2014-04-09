@@ -118,18 +118,16 @@ def popen(cmd, stdin, stdout, stderr): # pragma: no cover
 # ZMQ urls used to connect sshm and ssh
 SINK_URL = 'inproc://sink'
 
-def ssh(thread_num, context, url, port, command, extra_arguments, stdin=None):
+def ssh(thread_num, context, uri, command, extra_arguments, stdin=None):
     """
     Create an SSH connection to 'url' on port 'port'.  Execute 'command' and
     pass any stdin to this ssh session.  Return the results via ZMQ (SINK_URL).
 
     @param context: Create all ZMQ sockets using this context.
     @type context: zmq.Context
-    @param url: SSH to this url
-    @type url: str
 
-    @param port: destination's port
-    @type port: str
+    @param url: user@example.com:22
+    @type url: str
 
     @param commmand: Execute this command on 'url'.
     @type command: str
@@ -145,8 +143,7 @@ def ssh(thread_num, context, url, port, command, extra_arguments, stdin=None):
     # This is the basic result that we send back
     result = {
             'thread_num':thread_num,
-            'url':url,
-            'port':port,
+            'uri':uri,
             }
 
     # Send the results to this sink
@@ -159,10 +156,12 @@ def ssh(thread_num, context, url, port, command, extra_arguments, stdin=None):
         cmd.extend(extra_arguments or [])
         # Only change the port at the user's request.  Otherwise, use SSH's
         # default port.
-        if port:
+        try:
+            url, port = uri.split(':')
             cmd.extend([url, '-p', port, command])
-        else:
-            cmd.extend([url, command])
+        except ValueError:
+            # No port provided
+            cmd.extend([uri, command])
 
         # Run the command, return its results
         proc = popen(cmd,
@@ -230,7 +229,6 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     @returns: A list containing (success, handle, message) from each method
         call.
     """
-    return
     context = zmq.Context()
     # The results of each ssh call is reported to this sink
     sink = context.socket(zmq.PULL)
