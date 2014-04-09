@@ -53,7 +53,7 @@ def create_uri(user, target, port):
 
 
 _parse_uri = re.compile(r'(?:(\w+)@)?(?:(?:([a-zA-Z][\w.]+)(?:\[([\d,-]+)\])?([\w.]+)?)|([\d,.-]+))(?::(\d+))?,?')
-invalid_urls = ValueError('Invalid URIs provided!')
+invalid_uris = ValueError('Invalid URIs provided!')
 
 def uri_expansion(input_str):
     """
@@ -67,7 +67,7 @@ def uri_expansion(input_str):
     try:
         uris = _parse_uri.findall(input_str)
     except TypeError:
-        raise invalid_urls
+        raise invalid_uris
 
     for uri in uris:
         user, prefix, range_str, suffix, ip_addr, port = uri
@@ -80,7 +80,7 @@ def uri_expansion(input_str):
         elif ip_addr:
             # Check the length of this IP address
             if ip_addr.count('.') != 3:
-                raise invalid_urls
+                raise invalid_uris
 
             if '-' in ip_addr or ',' in ip_addr:
                 # Expand any ranges in the octets
@@ -100,7 +100,7 @@ def uri_expansion(input_str):
 
     # Some targets must be specified
     if not new_uris:
-        raise invalid_urls
+        raise invalid_uris
 
     return new_uris
 
@@ -121,16 +121,16 @@ SINK_URL = 'inproc://sink'
 
 def ssh(thread_num, context, uri, command, extra_arguments, stdin=None):
     """
-    Create an SSH connection to 'url' on port 'port'.  Execute 'command' and
+    Create an SSH connection to 'uri'.  Execute 'command' and
     pass any stdin to this ssh session.  Return the results via ZMQ (SINK_URL).
 
     @param context: Create all ZMQ sockets using this context.
     @type context: zmq.Context
 
-    @param url: user@example.com:22
-    @type url: str
+    @param uri: user@example.com:22
+    @type uri: str
 
-    @param commmand: Execute this command on 'url'.
+    @param commmand: Execute this command on 'uri'.
     @type command: str
 
     @param extra_arguments: Pass these extra arguments to the ssh call.
@@ -158,8 +158,8 @@ def ssh(thread_num, context, uri, command, extra_arguments, stdin=None):
         # Only change the port at the user's request.  Otherwise, use SSH's
         # default port.
         try:
-            url, port = uri.split(':')
-            cmd.extend([url, '-p', port, command])
+            user_url, port = uri.split(':')
+            cmd.extend([user_url, '-p', port, command])
         except ValueError:
             # No port provided
             cmd.extend([uri, command])

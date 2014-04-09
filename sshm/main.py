@@ -62,12 +62,12 @@ def main():
     for result in results:
         if ('traceback' in result) and (result['traceback'] != ''):
             # An exception occured.
-            out = ['sshm: Exception: %s:' % result['url'],
+            out = ['sshm: Exception: %s:' % result['uri'],
                     result['traceback'].rstrip('\n'),]
         else:
             out = ['sshm: %s%s(%d):' % (
                     'Failure: ' if result['return_code'] != 0 else '',
-                    result['url'],
+                    result['uri'],
                     result['return_code'],
                     ),]
             if result['stdout']:
