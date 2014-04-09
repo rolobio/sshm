@@ -29,8 +29,8 @@ from sshm.lib import sshm
 for result in sshm('example[5,8].com', 'ps aux | wc -l'):
     print(result)
 
-{'stdout': u'195\n', 'url': 'example5.com', 'cmd': ['ssh', 'example5.com', 'ps aux | wc -l'], 'return_code': 0, 'stderr': u'', 'port': ''}
-{'stdout': u'120\n', 'url': 'example8.com', 'cmd': ['ssh', 'example8.com', 'ps aux | wc -l'], 'return_code': 0, 'stderr': u'', 'port': ''}
+{'stdout': u'195\n', 'url': 'example5.com', 'cmd': ['ssh', 'example5.com', 'ps aux | wc -l'], 'return_code': 0, 'stderr': u''}
+{'stdout': u'120\n', 'url': 'example8.com', 'cmd': ['ssh', 'example8.com', 'ps aux | wc -l'], 'return_code': 0, 'stderr': u''}
 ```
 or run it on your console:
 
@@ -43,11 +43,11 @@ Get a count of processes on each server:
 
 Check if postfix is running on mail servers:
 
-     $ sshm mail[01-03].example.com "postfix status"
+     $ sshm 192.168.0.1-5 "postfix status"
 
 Verify which servers are accepting SSH connections:
 
-     $ sshm example[1-5].com "exit"
+     $ sshm example[1-5,8].com "exit"
 
 Copy a file to several servers (may not work for larger files):
 
