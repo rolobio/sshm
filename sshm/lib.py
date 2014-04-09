@@ -38,24 +38,21 @@ def expand_ranges(to_expand):
     return nums
 
 
-# This is used to check if the target contains any alpha characters.
-_alpha = re.compile(r'[a-zA-Z]')
-
-def is_url(target):
+def create_uri(user, target, port):
     """
-    If target conains any alpha characters, it is an URL.
-
-    @param is_url: The target to check
-    @type is_url: str
+    Create a valid URI from the provided parameters.
     """
-    return bool(_alpha.search(target))
+    if user and port:
+        return user+'@'+target+':'+port
+    elif user:
+        return user+'@'+target
+    elif port:
+        return target+':'+port
+    else:
+        return target
 
 
-# This is used to parse a URL range string
-_parse_ranges = re.compile(r'[\[\]]')
-# This is used to parse a URI
-_parse_uri = re.compile(r'[@:]')
-
+_parse_uri = re.compile(r'(?:(\w+)@)?(?:(?:([a-zA-Z][\w.]+)(?:\[([\d,-]+)\])?([\w.]+)?)|([\d,.-]+))(?::(\d+))?,?')
 
 def target_expansion(input_str):
     """
@@ -66,69 +63,30 @@ def target_expansion(input_str):
     @type input_str: str
     """
     targets = []
-    input_list = input_str.split(',')
-    while input_list:
-        # If there is not current target, get one and then continue
-        target = input_list.pop(0)
+    uris = _parse_uri.findall(input_str)
+    for uri in uris:
+        user, prefix, range_str, suffix, ip_addr, port = uri
 
-        # Remove the username from the front. If this isn't removed, an IP could
-        # be mistaken for a URL.
-        if '@' in target:
-            user, target = target.split('@')
-        else:
-            user = None
-
-        # Get the whole target before continuing
-        if is_url(target) and '[' in target:
-            # This URL needs to be expanded
-            while ']' not in target:
-                # The matching bracket is missing, get more sections until
-                # it is found.
-                target += ','+input_list.pop(0)
-        elif not is_url(target):
-            while target.count('.') <= 2:
-                # This IP needs has more parts in the next section.
-                target += ','+input_list.pop(0)
-
-        # Remove the port from the target
-        if ':' in target:
-            target, port = target.split(':')
-        else:
-            port = None
-
-        # Expand any targets as specified
-        if is_url(target):
-            if '[' in target:
-                prefix, range_str, suffix = _parse_ranges.split(target)
-                products = [''.join([i,j,k]) for i, j, k in product([prefix,], expand_ranges(range_str), [suffix,])]
-                new_targets = products
-            else:
-                # No expansion necessary
-                new_targets = [target,]
-        else:
-            if '-' in target or ',' in target:
-                eo = [expand_ranges(i) for i in target.split('.')]
-                # Create all prodcts for each octet, add these to the next
+        if (prefix or suffix) and range_str:
+            # Expand the URL
+            products = [''.join([i,j,k]) for i, j, k in product([prefix,], expand_ranges(range_str), [suffix,])]
+            targets.extend([create_uri(user, p, port) for p in products])
+        elif ip_addr:
+            if '-' in ip_addr or ',' in ip_addr:
+                eo = [expand_ranges(i) for i in ip_addr.split('.')]
+                # Create all products for each octet, add these to the next
                 # octet.
                 products = ['.'.join([i,j]) for i,j in product(eo[2], eo[3])]
                 products = ['.'.join([i,j]) for i,j in product(eo[1], products)]
                 products = ['.'.join([i,j]) for i,j in product(eo[0], products)]
-                # Add the port back on if it was specified
-                new_targets = products
+                # Extend targets with the new URIs
+                targets.extend([create_uri(user, p, port) for p in products])
             else:
-                # No expansion necessary
-                new_targets = [target,]
-
-        # Add usernames and ports back onto the URIs
-        if user and port:
-            targets.extend(['%s@%s:%s' % (user, t, port) for t in new_targets])
-        elif user:
-            targets.extend(['%s@%s' % (user, t) for t in new_targets])
-        elif port:
-            targets.extend(['%s:%s' % (t, port) for t in new_targets])
+                # No expansion necessary for IP
+                targets.append(create_uri(user, ip_addr, port))
         else:
-            targets.extend(new_targets)
-
+            # No expansion necessary for URL
+            targets.append(create_uri(user, prefix+suffix, port))
     return targets
 
 

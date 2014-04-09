@@ -45,22 +45,6 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(extra_args, [provided[2],])
 
 
-    def test_is_url(self):
-        """
-        This is used to detect if a string contains alpha characters.
-        """
-        prov_exp = [
-                ('a', True),
-                ('.', False),
-                ('example.com', True),
-                ('mail1.example.com', True),
-                ('10.1.2.3', False),
-                ]
-
-        for provided, expected in prov_exp:
-            self.assertEqual(lib.is_url(provided), expected, provided)
-
-
     def test_target_expansion(self):
         """
         The target specification should match Nmap's capabilities.
