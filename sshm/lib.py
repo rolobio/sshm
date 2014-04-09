@@ -74,8 +74,9 @@ def uri_expansion(input_str):
 
         if (prefix or suffix) and range_str:
             # Expand the URL
-            products = [''.join([i,j,k]) for i, j, k in product([prefix,], expand_ranges(range_str), [suffix,])]
-            new_uris.extend([create_uri(user, p, port) for p in products])
+            i = product([prefix,], expand_ranges(range_str), [suffix,])
+            i = [''.join(iter(i)) for i in i]
+            new_uris.extend([create_uri(user, i, port) for i in i])
         elif ip_addr:
             # Check the length of this IP address
             if ip_addr.count('.') != 3:
@@ -83,13 +84,13 @@ def uri_expansion(input_str):
 
             if '-' in ip_addr or ',' in ip_addr:
                 # Expand any ranges in the octets
-                eo = [expand_ranges(i) for i in ip_addr.split('.')]
+                i = [expand_ranges(i) for i in ip_addr.split('.')]
                 # Create all products for each expanded octet
-                products = product(eo[0], eo[1], eo[2], eo[3])
+                i = product(i[0], i[1], i[2], i[3])
                 # Join the octets back together with dots
-                expanded_uris = ['.'.join(iter(p)) for p in products]
+                i = ['.'.join(iter(i)) for i in i]
                 # Extend new_uris with the new URIs, conver them to a URI
-                new_uris.extend([create_uri(user, e, port) for e in expanded_uris])
+                new_uris.extend([create_uri(user, i, port) for i in i])
             else:
                 # No expansion necessary for IP
                 new_uris.append(create_uri(user, ip_addr, port))
