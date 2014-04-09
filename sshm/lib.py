@@ -4,12 +4,14 @@ import subprocess
 import sys
 import threading
 import zmq
+from itertools import product
 from traceback import format_exc
 
-__all__ = ['sshm']
+__all__ = ['sshm', 'uri_expansion']
 
 
-MATCH_RANGES = re.compile(r'(?:(\d+)(?:,|$))|(?:(\d+-\d+))')
+# This is used to parse a range string
+_match_ranges = re.compile(r'(?:(\d+)(?:,|$))|(?:(\d+-\d+))')
 
 def expand_ranges(to_expand):
     """
@@ -18,11 +20,11 @@ def expand_ranges(to_expand):
 
         Example: "1,4,07-10" to ['1', '4', '07', '08', '09', '10']
 
-    @type to_expand: str
     @param to_expand: Expand this string into a list of integers.
+    @type to_expand: str
     """
     nums = []
-    for single, range_str in MATCH_RANGES.findall(to_expand):
+    for single, range_str in _match_ranges.findall(to_expand):
         if single:
             nums.append(single)
         if range_str:
@@ -36,51 +38,71 @@ def expand_ranges(to_expand):
     return nums
 
 
-def create_uri(user, body, num, suffix):
+def create_uri(user, target, port):
     """
-    Use the provided parameters to create a URI.
-
-    @rtype: str
-        Example: 'user@host3'
+    Create a valid URI from the provided parameters.
     """
-    uri = ''
-    if user:
-        uri += user+'@'
-    uri += body
-    uri += num
-    uri += suffix
-    return uri
+    if user and port:
+        return user+'@'+target+':'+port
+    elif user:
+        return user+'@'+target
+    elif port:
+        return target+':'+port
+    else:
+        return target
 
 
-EXTRACT_URIS = re.compile(r'([@\w._:-]+(?:\[[\d,-]+\])?(?:[@\w._:-]+)?)(?:,|$)')
-PARSE_URI = re.compile(r'(?:([\w._-]+)@)?(?:([\w._-]+)(?:\[([\d,-]+)\])?([\w._-]+)?)(?::([\d+]+))?$')
+_parse_uri = re.compile(r'(?:(\w+)@)?(?:(?:([a-zA-Z][\w.]+)(?:\[([\d,-]+)\])?([\w.]+)?)|([\d,.-]+))(?::(\d+))?,?')
+invalid_urls = ValueError('Invalid URIs provided!')
 
-def expand_servers(server_list):
+def uri_expansion(input_str):
     """
-    Create a URI tuple for each server in the list.
+    Expand a list of uris into invividual URLs/IPs and their respective
+    ports and usernames. Preserve any zero-padding the range may contain.
 
-        Example: 'example[3-5].com,example7.com:245' to
-            [
-                ('example3.com', ''),
-                ('example4.com', ''),
-                ('example5.com' ''),
-                ('example7.com', '245'),
-            ]
+    @param input_str: The uris to expand
+    @type input_str: str
     """
-    uris = []
-    for uri in EXTRACT_URIS.findall(server_list):
-        # There should only be one URI in "uri", so we'll match it and get
-        # the groups.
-        user, body, range_str, suffix, port = PARSE_URI.match(uri).groups('')
-        if range_str:
-            # There are multiple hosts, add a URI for each
-            for num in expand_ranges(range_str):
-                uri = create_uri(user, body, num, suffix)
-                uris.append((uri, port))
+    new_uris = []
+    try:
+        uris = _parse_uri.findall(input_str)
+    except TypeError:
+        raise invalid_urls
+
+    for uri in uris:
+        user, prefix, range_str, suffix, ip_addr, port = uri
+
+        if (prefix or suffix) and range_str:
+            # Expand the URL
+            i = product([prefix,], expand_ranges(range_str), [suffix,])
+            i = [''.join(iter(i)) for i in i]
+            new_uris.extend([create_uri(user, i, port) for i in i])
+        elif ip_addr:
+            # Check the length of this IP address
+            if ip_addr.count('.') != 3:
+                raise invalid_urls
+
+            if '-' in ip_addr or ',' in ip_addr:
+                # Expand any ranges in the octets
+                i = [expand_ranges(i) for i in ip_addr.split('.')]
+                # Create all products for each expanded octet
+                i = product(i[0], i[1], i[2], i[3])
+                # Join the octets back together with dots
+                i = ['.'.join(iter(i)) for i in i]
+                # Extend new_uris with the new URIs, conver them to a URI
+                new_uris.extend([create_uri(user, i, port) for i in i])
+            else:
+                # No expansion necessary for IP
+                new_uris.append(create_uri(user, ip_addr, port))
         else:
-            uri = create_uri(user, body, '', suffix)
-            uris.append((uri, port))
-    return uris
+            # No expansion necessary for URL
+            new_uris.append(create_uri(user, prefix+suffix, port))
+
+    # Some targets must be specified
+    if not new_uris:
+        raise invalid_urls
+
+    return new_uris
 
 
 def popen(cmd, stdin, stdout, stderr): # pragma: no cover
@@ -97,18 +119,16 @@ def popen(cmd, stdin, stdout, stderr): # pragma: no cover
 # ZMQ urls used to connect sshm and ssh
 SINK_URL = 'inproc://sink'
 
-def ssh(thread_num, context, url, port, command, extra_arguments, stdin=None):
+def ssh(thread_num, context, uri, command, extra_arguments, stdin=None):
     """
     Create an SSH connection to 'url' on port 'port'.  Execute 'command' and
     pass any stdin to this ssh session.  Return the results via ZMQ (SINK_URL).
 
     @param context: Create all ZMQ sockets using this context.
     @type context: zmq.Context
-    @param url: SSH to this url
-    @type url: str
 
-    @param port: destination's port
-    @type port: str
+    @param url: user@example.com:22
+    @type url: str
 
     @param commmand: Execute this command on 'url'.
     @type command: str
@@ -124,8 +144,7 @@ def ssh(thread_num, context, url, port, command, extra_arguments, stdin=None):
     # This is the basic result that we send back
     result = {
             'thread_num':thread_num,
-            'url':url,
-            'port':port,
+            'uri':uri,
             }
 
     # Send the results to this sink
@@ -138,10 +157,12 @@ def ssh(thread_num, context, url, port, command, extra_arguments, stdin=None):
         cmd.extend(extra_arguments or [])
         # Only change the port at the user's request.  Otherwise, use SSH's
         # default port.
-        if port:
+        try:
+            url, port = uri.split(':')
             cmd.extend([url, '-p', port, command])
-        else:
-            cmd.extend([url, command])
+        except ValueError:
+            # No port provided
+            cmd.extend([uri, command])
 
         # Run the command, return its results
         proc = popen(cmd,
@@ -227,11 +248,11 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     # Start each SSH connection in it's own thread
     threads = []
     thread_num = 0
-    for url, port in expand_servers(servers):
+    for uri in uri_expansion(servers):
         stdin_mv = memoryview(stdin_contents)
         thread = threading.Thread(target=ssh,
                 # Provide the arguments that ssh needs.
-                args=(thread_num, context, url, port, command, extra_arguments, stdin_mv)
+                args=(thread_num, context, uri, command, extra_arguments, stdin_mv)
                 )
         thread.start()
         threads.append(thread)

@@ -10,177 +10,6 @@ from mock import MagicMock
 import unittest
 import zmq
 
-class TestRegex(unittest.TestCase):
-    """
-    Test that the regex variables parse as expected.
-    """
-
-    def test_EXTRACT_URIS(self):
-        """
-        The EXTRACT_URIS regex should extract a list of URIs from a string.
-        """
-        tests = [
-            ('example.com',
-                ['example.com'],
-            ),
-            ('example.com,example2.com',
-                ['example.com', 'example2.com'],
-            ),
-            ('mail.example.com',
-                ['mail.example.com'],
-            ),
-            ('user@example.com:500',
-                ['user@example.com:500'],
-            ),
-            ('user.name@example.com',
-                ['user.name@example.com'],
-            ),
-            ('user@example.com:500,exam_ple.com',
-                ['user@example.com:500', 'exam_ple.com'],
-            ),
-        ]
-
-        for uris, expected in tests:
-            output = lib.EXTRACT_URIS.findall(uris)
-            self.assertEqual(expected, output)
-
-
-    def test_PARSE_URI(self):
-        """
-        PARSE_URI should be able to extract the ssh relevant components from a
-        URI.
-        """
-        tests = [
-            ('example.com',
-                ('', 'example.com', '', '', '')
-            ),
-            ('user@example.com',
-                ('user', 'example.com', '', '', '')
-            ),
-            ('user@example.com:500',
-                ('user', 'example.com', '', '', '500')
-            ),
-            ('example[1-5].com',
-                ('', 'example', '1-5', '.com', '')
-            ),
-            ('user@example[1-5].com:22',
-                ('user', 'example', '1-5', '.com', '22')
-            ),
-        ]
-
-        for uri, expected in tests:
-            output = lib.PARSE_URI.match(uri).groups('')
-            self.assertEqual(expected, output)
-
-
-
-class TestRegexFuncs(unittest.TestCase):
-    """
-    Test that the regex functions use the regex as expected.
-    """
-
-    def test_expand_ranges(self):
-        """
-        This function should convert a string of comma and dash seperated
-        integers and convert them into a list of number strings.
-        """
-        tests = [
-            ('1',
-                ['1',],
-            ),
-            ('10',
-                ['10',],
-            ),
-            ('01',
-                ['01',],
-            ),
-            ('01-06',
-                ['01', '02', '03', '04', '05', '06'],
-            ),
-            ('01-03,7',
-                ['01', '02', '03', '7'],
-            ),
-            ('5-7,9',
-                ['5', '6', '7', '9'],
-            ),
-            ('003-006',
-                ['003', '004', '005', '006'],
-            ),
-            ('1,01,05-8,0006-0008,12,100',
-                ['1', '01', '05', '06', '07', '08', '0006', '0007', '0008', '12', '100'],
-            ),
-        ]
-
-        for range_str, expected in tests:
-            output = lib.expand_ranges(range_str)
-            self.assertEqual(expected, output)
-
-
-    def test_expand_servers(self):
-        """
-        expand_servers should convert abbreviated server uris into URI tuples.
-        """
-        tests = [
-            ('example.com',
-                [('example.com', '')],
-                ),
-            ('mail.example.com',
-                [('mail.example.com', '')],
-                ),
-            ('example.com,mail.example.com',
-                [('example.com', ''),
-                ('mail.example.com', '')
-                ],
-                ),
-            ('mail.exa_mple3.com',
-                [('mail.exa_mple3.com', '')],
-                ),
-            ('mail[1-3].example.com',
-                [('mail1.example.com', ''),
-                ('mail2.example.com', ''),
-                ('mail3.example.com', ''),
-                ],
-                ),
-            ('mail[1-3].example.com,example[5-7,9].com',
-                [('mail1.example.com', ''),
-                ('mail2.example.com', ''),
-                ('mail3.example.com', ''),
-                ('example5.com', ''),
-                ('example6.com', ''),
-                ('example7.com', ''),
-                ('example9.com', ''),
-                ],
-                ),
-            (
-                'example[1-3].com:123',
-                [
-                    ('example1.com', '123'),
-                    ('example2.com', '123'),
-                    ('example3.com', '123'),
-                    ],
-                ),
-            (
-                'example[1-3].com:123,mail1.example.com:789',
-                [
-                    ('example1.com', '123'),
-                    ('example2.com', '123'),
-                    ('example3.com', '123'),
-                    ('mail1.example.com', '789'),
-                    ],
-                ),
-        ]
-        for servers_str, expected_list in tests:
-            output = lib.expand_servers(servers_str)
-            assert len(output) == len(expected_list), \
-                'Expected is not a long as output. Add more to the test.'
-            for uri_port, expected in zip(output, expected_list):
-                uri, port = uri_port
-                expected_uri, expected_port = expected
-
-                self.assertEqual(expected_uri, uri)
-                self.assertEqual(expected_port, port)
-
-
 
 class TestFuncs(unittest.TestCase):
 
@@ -216,28 +45,87 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(extra_args, [provided[2],])
 
 
-    def test_create_uri(self):
+    def test_uri_expansion(self):
         """
-        create_uri assembles them as expected.
+        The target specification should match Nmap's capabilities.
+
+        Example:
+            10.1.2.3,user@192.168.0.1-254,10.0.2-4,0-255,mail[01-5].example.com:1234
+            [
+               '10.1.2.3',
+               'user@192.168.0.1', ...  'user@192.168.0.254',
+               '10.0.2.0', ...  '10.0.2.255',
+               '10.0.3.0', ...  '10.0.3.255',
+               '10.0.4.0', ...  '10.0.4.255',
+               'mail01.example.com:1234',
+               'mail02.example.com:1234',
+               'mail03.example.com:1234',
+               'mail04.example.com:1234',
+               'mail05.example.com:1234',
+           ]
         """
-        self.assertEqual('example.com',
-                lib.create_uri('', 'example.com', '', '')
-                )
-        self.assertEqual('example01.com',
-                lib.create_uri('', 'example', '01', '.com')
-                )
-        self.assertEqual('example01',
-                lib.create_uri('', 'example', '01', '')
-                )
-        self.assertEqual('user@example',
-                lib.create_uri('user', 'example', '', '')
-                )
-        self.assertEqual('user@example.com',
-                lib.create_uri('user', 'example', '', '.com')
-                )
-        self.assertEqual('user@example10.com',
-                lib.create_uri('user', 'example', '10', '.com')
-                )
+        prov_exp = [
+                # IPs
+                ('10.1.2.3', ['10.1.2.3']),
+                ('10.1.2.3:123', ['10.1.2.3:123']),
+                ('10.2.3.4,example.com', ['10.2.3.4', 'example.com']),
+                ('10.4.5.6-8', ['10.4.5.6', '10.4.5.7', '10.4.5.8']),
+                ('10-11.1.2.3', ['10.1.2.3', '11.1.2.3']),
+                ('10-11.1.2.3-5',['10.1.2.3', '10.1.2.4', '10.1.2.5', '11.1.2.3', '11.1.2.4', '11.1.2.5']),
+                ('192.168.3-5,7.1', ['192.168.3.1', '192.168.4.1', '192.168.5.1', '192.168.7.1']),
+                ('192.168.3-5,7.1:567', ['192.168.3.1:567', '192.168.4.1:567', '192.168.5.1:567', '192.168.7.1:567']),
+                # URLs
+                ('example.com', ['example.com']),
+                ('example.com:789', ['example.com:789']),
+                ('user@example.com', ['user@example.com']),
+                ('mail[01-3].example.com', ['mail01.example.com', 'mail02.example.com', 'mail03.example.com']),
+                ('mail[01-3].example.com:123', ['mail01.example.com:123', 'mail02.example.com:123', 'mail03.example.com:123']),
+                # Combinations
+                ('example.com,1.2.3.4', ['example.com', '1.2.3.4']),
+                ('root@example.com:1234,root@1.2.3.4:1234', ['root@example.com:1234', 'root@1.2.3.4:1234']),
+                ('asdf@example[11-13,17].com:1234,root@1.2,5-7.3.4:1234', ['asdf@example11.com:1234', 'asdf@example12.com:1234', 'asdf@example13.com:1234', 'asdf@example17.com:1234', 'root@1.2.3.4:1234', 'root@1.5.3.4:1234', 'root@1.6.3.4:1234', 'root@1.7.3.4:1234']),
+                ]
+
+        for provided, expected in prov_exp:
+            self.assertEqual(lib.uri_expansion(provided),
+                    expected)
+
+    def test_invalid_uri_expansion(self):
+        """
+        Invalid expansions should raise an Exception.
+        """
+        prov = [
+                '10.1.2.3-2',
+                '10.2',
+                'example[2-1].com',
+                '',
+                None
+                ]
+
+        for provided in prov:
+            self.assertRaises(ValueError, lib.uri_expansion, provided)
+
+
+    def test_expand_ranges(self):
+        """
+        This function should convert a string of comma and dash seperated
+        integers and convert them into a list of number strings.
+        """
+        tests = [
+            ('1', ['1',]),
+            ('10', ['10',]),
+            ('01', ['01',]),
+            ('01-06', ['01', '02', '03', '04', '05', '06']),
+            ('01-03,7', ['01', '02', '03', '7']),
+            ('5-7,9', ['5', '6', '7', '9']),
+            ('003-006', ['003', '004', '005', '006']),
+            ('1,01,05-8,0006-0008,12,100', ['1', '01', '05', '06', '07', '08', '0006', '0007', '0008', '12', '100']),
+        ]
+
+        for range_str, expected in tests:
+            output = lib.expand_ranges(range_str)
+            self.assertEqual(expected, output)
+
 
 
 
@@ -274,7 +162,7 @@ class Test_ssh(unittest.TestCase):
         lib.popen = sub.popen
 
         context, socket = fake_context()
-        lib.ssh(1, context, 'asdf', '9678', 'command', [])
+        lib.ssh(1, context, 'asdf:9678', 'command', [])
 
         # Get the result that was sent in the socket
         self.assertEqual(socket.send_pyobj.call_count, 1)
@@ -320,12 +208,11 @@ class Test_sshm(unittest.TestCase):
         self.assertEqual(result_list[0],
                 {
                     'stdout': '',
-                    'url': 'example.com',
+                    'uri': 'example.com',
                     'cmd': ['ssh', 'example.com', 'exit'],
                     'return_code': 0,
                     'stderr': '',
                     'thread_num':0,
-                    'port': ''
                     }
                 )
 
@@ -343,11 +230,11 @@ class Test_sshm(unittest.TestCase):
         results_list = list(lib.sshm('example[01-03].com', 'exit'))
         self.assertEqual(3, len(results_list))
         self.assertEqual(3,
-                len(set([r['url'] for r in results_list]))
+                len(set([r['uri'] for r in results_list]))
                 )
         for result in results_list:
             self.assertNotIn('traceback', result)
-            self.assertIn(result['url'],
+            self.assertIn(result['uri'],
                     ['example01.com', 'example02.com', 'example03.com']
                     )
 
@@ -378,7 +265,7 @@ class Test_sshm2(unittest.TestCase):
         for result in result_list:
             self.assertIn('thread_num', result)
 
-        expected_urls = [
+        expected_uris = [
                 'example01.com',
                 'example02.com',
                 'example03.com',
@@ -386,17 +273,16 @@ class Test_sshm2(unittest.TestCase):
 
         self.assertTrue(lib.ssh.called)
         # Verify each ssh function call
-        self.assertEqual(len(lib.ssh.call_args_list), len(expected_urls))
-        for args_list, expected_url in zip(lib.ssh.call_args_list, expected_urls):
+        self.assertEqual(len(lib.ssh.call_args_list), len(expected_uris))
+        for args_list, expected_uri in zip(lib.ssh.call_args_list, expected_uris):
             args, kwargs = args_list
 
             self.assertEqual(kwargs, {})
 
-            thread_num, context, url, port, command, extra_arguments, stdin = args
+            thread_num, context, uri, command, extra_arguments, stdin = args
             self.assertEqual(int, type(thread_num))
             self.assertEqual(zmq.Context, type(context))
-            self.assertEqual(expected_url, url)
-            self.assertEqual('', port)
+            self.assertEqual(expected_uri, uri)
             self.assertEqual('foo', command)
             self.assertEqual(extra_arguments, extra_arguments)
             self.assertEqual(type(stdin), type(memoryview(bytes())))
