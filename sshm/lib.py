@@ -86,9 +86,7 @@ def uri_expansion(input_str):
 
                 # Create all products for each octet, add these to the next
                 # octet.
-                products = ['.'.join([i,j]) for i,j in product(eo[2], eo[3])]
-                products = ['.'.join([i,j]) for i,j in product(eo[1], products)]
-                products = ['.'.join([i,j]) for i,j in product(eo[0], products)]
+                products = ['.'.join([i,j,k,l]) for i,j,k,l in product(eo[0], eo[1], eo[2], eo[3])]
                 # Extend new_uris with the new URIs
                 new_uris.extend([create_uri(user, p, port) for p in products])
             else:
