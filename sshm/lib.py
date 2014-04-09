@@ -7,20 +7,21 @@ import zmq
 from itertools import product
 from traceback import format_exc
 
-__all__ = ['sshm']
+__all__ = ['sshm', 'target_expansion']
 
 
+# This is used to parse a range string
 _match_ranges = re.compile(r'(?:(\d+)(?:,|$))|(?:(\d+-\d+))')
 
-def expand_ints(to_expand):
+def expand_ranges(to_expand):
     """
     Convert a comma-seperated range of integers into a list. Keep any zero
     padding the numbers may have.
 
         Example: "1,4,07-10" to ['1', '4', '07', '08', '09', '10']
 
-    @type to_expand: str
     @param to_expand: Expand this string into a list of integers.
+    @type to_expand: str
     """
     nums = []
     for single, range_str in _match_ranges.findall(to_expand):
@@ -36,18 +37,23 @@ def expand_ints(to_expand):
                 nums.append(padding % k)
     return nums
 
+
 # This is used to check if the target contains any alpha characters.
 _alpha = re.compile(r'[a-zA-Z]')
 
 def is_url(target):
     """
     If target conains any alpha characters, it is an URL.
+
+    @param is_url: The target to check
+    @type is_url: str
     """
     return bool(_alpha.search(target))
 
 
-# This is used to parse a range string
+# This is used to parse a URL range string
 _parse_ranges = re.compile(r'[\[\]]')
+# This is used to parse a URI
 _parse_uri = re.compile(r'[@:]')
 
 
@@ -55,6 +61,9 @@ def target_expansion(input_str):
     """
     Expand a list of targets into invividual URLs/IPs and their respective
     ports. Preserve any zero-padding the range may contain.
+
+    @param input_str: The targets to expand
+    @type input_str: str
     """
     targets = []
     input_list = input_str.split(',')
@@ -62,44 +71,63 @@ def target_expansion(input_str):
         # If there is not current target, get one and then continue
         target = input_list.pop(0)
 
-        if is_url(target):
-            # The current target is a URL
-            if '[' in target:
-                # This URL needs to be expanded
-                while ']' not in target:
-                    # The matching bracket is missing, get more sections until
-                    # it is found.
-                    target += ','+input_list.pop(0)
-                prefix, range_str, suffix = _parse_ranges.split(target)
-                products = [''.join([i,j,k]) for i, j, k in product([prefix,], expand_ints(range_str), [suffix,])]
-                targets.extend(products)
-            else:
-                targets.append(target)
+        # Remove the username from the front. If this isn't removed, an IP could
+        # be mistaken for a URL.
+        if '@' in target:
+            user, target = target.split('@')
         else:
-            # The current target is an IP
+            user = None
+
+        # Get the whole target before continuing
+        if is_url(target) and '[' in target:
+            # This URL needs to be expanded
+            while ']' not in target:
+                # The matching bracket is missing, get more sections until
+                # it is found.
+                target += ','+input_list.pop(0)
+        elif not is_url(target):
             while target.count('.') <= 2:
                 # This IP needs has more parts in the next section.
                 target += ','+input_list.pop(0)
 
-            if '-' in target:
-                # This IP needs to be expanded
-                try:
-                    target, port = target.split(':')
-                except ValueError:
-                    # No port specified
-                    port = None
-                eo = [expand_ints(i) for i in target.split('.')]
+        # Remove the port from the target
+        if ':' in target:
+            target, port = target.split(':')
+        else:
+            port = None
+
+        # Expand any targets as specified
+        if is_url(target):
+            if '[' in target:
+                prefix, range_str, suffix = _parse_ranges.split(target)
+                products = [''.join([i,j,k]) for i, j, k in product([prefix,], expand_ranges(range_str), [suffix,])]
+                new_targets = products
+            else:
+                # No expansion necessary
+                new_targets = [target,]
+        else:
+            if '-' in target or ',' in target:
+                eo = [expand_ranges(i) for i in target.split('.')]
+                # Create all prodcts for each octet, add these to the next
+                # octet.
                 products = ['.'.join([i,j]) for i,j in product(eo[2], eo[3])]
                 products = ['.'.join([i,j]) for i,j in product(eo[1], products)]
                 products = ['.'.join([i,j]) for i,j in product(eo[0], products)]
                 # Add the port back on if it was specified
-                if port:
-                    targets.extend([p+':'+port for p in products])
-                else:
-                    targets.extend(products)
+                new_targets = products
             else:
-                # This IP is complete
-                targets.append(target)
+                # No expansion necessary
+                new_targets = [target,]
+
+        # Add usernames and ports back onto the URIs
+        if user and port:
+            targets.extend(['%s@%s:%s' % (user, t, port) for t in new_targets])
+        elif user:
+            targets.extend(['%s@%s' % (user, t) for t in new_targets])
+        elif port:
+            targets.extend(['%s:%s' % (t, port) for t in new_targets])
+        else:
+            targets.extend(new_targets)
 
     return targets
 

@@ -99,11 +99,53 @@ class TestFuncs(unittest.TestCase):
                 ('user@example.com', ['user@example.com']),
                 ('mail[01-3].example.com', ['mail01.example.com', 'mail02.example.com', 'mail03.example.com']),
                 ('mail[01-3].example.com:123', ['mail01.example.com:123', 'mail02.example.com:123', 'mail03.example.com:123']),
+                # Combinations
+                ('example.com,1.2.3.4', ['example.com', '1.2.3.4']),
+                ('root@example.com:1234,root@1.2.3.4:1234', ['root@example.com:1234', 'root@1.2.3.4:1234']),
+                ('asdf@example[11-13,17].com:1234,root@1.2,5-7.3.4:1234', ['asdf@example11.com:1234', 'asdf@example12.com:1234', 'asdf@example13.com:1234', 'asdf@example17.com:1234', 'root@1.2.3.4:1234', 'root@1.5.3.4:1234', 'root@1.6.3.4:1234', 'root@1.7.3.4:1234']),
                 ]
 
         for provided, expected in prov_exp:
             self.assertEqual(lib.target_expansion(provided),
                     expected)
+
+
+    def test_expand_ranges(self):
+        """
+        This function should convert a string of comma and dash seperated
+        integers and convert them into a list of number strings.
+        """
+        tests = [
+            ('1',
+                ['1',],
+            ),
+            ('10',
+                ['10',],
+            ),
+            ('01',
+                ['01',],
+            ),
+            ('01-06',
+                ['01', '02', '03', '04', '05', '06'],
+            ),
+            ('01-03,7',
+                ['01', '02', '03', '7'],
+            ),
+            ('5-7,9',
+                ['5', '6', '7', '9'],
+            ),
+            ('003-006',
+                ['003', '004', '005', '006'],
+            ),
+            ('1,01,05-8,0006-0008,12,100',
+                ['1', '01', '05', '06', '07', '08', '0006', '0007', '0008', '12', '100'],
+            ),
+        ]
+
+        for range_str, expected in tests:
+            output = lib.expand_ranges(range_str)
+            self.assertEqual(expected, output)
+
 
 
 
