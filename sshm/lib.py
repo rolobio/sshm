@@ -82,13 +82,14 @@ def uri_expansion(input_str):
                 raise invalid_urls
 
             if '-' in ip_addr or ',' in ip_addr:
+                # Expand any ranges in the octets
                 eo = [expand_ranges(i) for i in ip_addr.split('.')]
-
-                # Create all products for each octet, add these to the next
-                # octet.
-                products = ['.'.join([i,j,k,l]) for i,j,k,l in product(eo[0], eo[1], eo[2], eo[3])]
-                # Extend new_uris with the new URIs
-                new_uris.extend([create_uri(user, p, port) for p in products])
+                # Create all products for each expanded octet
+                products = product(eo[0], eo[1], eo[2], eo[3])
+                # Join the octets back together with dots
+                expanded_uris = ['.'.join(iter(p)) for p in products]
+                # Extend new_uris with the new URIs, conver them to a URI
+                new_uris.extend([create_uri(user, e, port) for e in expanded_uris])
             else:
                 # No expansion necessary for IP
                 new_uris.append(create_uri(user, ip_addr, port))
