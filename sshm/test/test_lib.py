@@ -4,7 +4,6 @@ This module tests the basic functionality of sshm without performing a real ssh
 command.
 """
 from sshm import lib
-from sshm.main import get_argparse_args
 
 from mock import MagicMock
 import unittest
@@ -12,37 +11,6 @@ import zmq
 
 
 class TestFuncs(unittest.TestCase):
-
-    def test_get_argparse_args(self):
-        """
-        Simple examples of how the console should react to certain arguments.
-        """
-        # Valid
-        provided = ['example.com', 'ls']
-        args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example.com')
-        self.assertEqual(command, 'ls')
-        self.assertEqual(extra_args, [])
-
-        # Valid
-        provided = ['example[1-3].com', 'exit']
-        args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example[1-3].com')
-        self.assertEqual(command, 'exit')
-        self.assertEqual(extra_args, [])
-
-        # Lack of required arguments
-        provided = ['example.com']
-        self.assertRaises(SystemExit, get_argparse_args, provided)
-        provided = []
-        self.assertRaises(SystemExit, get_argparse_args, provided)
-
-        # Extra arguments
-        provided = ['example[1-3].com', 'exit', '-o UserKnownHostsFile=/dev/null']
-        args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example[1-3].com')
-        self.assertEqual(command, 'exit')
-        self.assertEqual(extra_args, [provided[2],])
 
 
     def test_uri_expansion(self):

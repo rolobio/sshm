@@ -5,6 +5,8 @@ This module allows the console to use SSHM's functionality.
 This module should only be run by the console!
 """
 
+from __future__ import print_function
+import sys
 try: # pragma: no cover version specific
     from lib import sshm
 except ImportError: # pragma: no cover version specific
@@ -39,6 +41,17 @@ def get_argparse_args(args=None):
     return (args, args.command, extra_args)
 
 
+def _print_handling_newlines(uri, return_code, to_print, header='', file=sys.stdout):
+    """
+    Print "to_print" to "file" with the formatting needed to represent it's data
+    properly.
+    """
+    if to_print.count('\n') == 0:
+        sep = ' '
+    else:
+        sep = '\n'
+    print('sshm: {}{}({}):{}{}'.format(header, uri, return_code, sep, to_print), file=file)
+
 
 def main():
     """
@@ -47,7 +60,6 @@ def main():
     This should only be run using a console!
     """
     import select
-    import sys
     args, command, extra_arguments = get_argparse_args()
 
     # Only provided stdin if there is data
@@ -60,27 +72,25 @@ def main():
     # Perform the command on each server, print the results to stdout.
     results = sshm(args.servers, command, extra_arguments, stdin)
     for result in results:
-        if ('traceback' in result) and (result['traceback'] != ''):
-            # An exception occured.
-            out = ['sshm: Exception: %s:' % result['uri'],
-                    result['traceback'].rstrip('\n'),]
-        else:
-            out = ['sshm: %s%s(%d):' % (
-                    'Failure: ' if result['return_code'] != 0 else '',
-                    result['uri'],
+        if result['stdout']:
+            _print_handling_newlines(result['uri'],
                     result['return_code'],
-                    ),]
-            if result['stdout']:
-                out.append(result['stdout'].rstrip('\n'))
-            if result['stderr']:
-                out.append(result['stderr'].rstrip('\n'))
-        # Put output in one line if it can fit
-        if sum([s.count('\n') for s in out]) == 0 and len(out) <= 2:
-            print(' '.join(out))
-        else:
-            # Too many newlines, print everything out on its own line
-            for i in out:
-                print(i)
+                    result['stdout']
+                    )
+        if result['stderr']:
+            _print_handling_newlines(result['uri'],
+                    result['return_code'],
+                    result['stderr'],
+                    'Error: ',
+                    sys.stderr
+                    )
+        if 'traceback' in result:
+            _print_handling_newlines(result['uri'],
+                    result['return_code'],
+                    result['traceback'],
+                    'Traceback: ',
+                    sys.stderr
+                    )
 
     # Exit with non-zero when there is a failure
     if sum([r['return_code'] for r in results]):
