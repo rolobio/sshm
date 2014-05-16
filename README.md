@@ -1,7 +1,7 @@
 # SSHM
 ## About
 [![Build Status](http://img.shields.io/travis/rolobio/sshm.svg)](https://travis-ci.org/rolobio/sshm)
-[![Coverage Status](https://coveralls.io/repos/rolobio/sshm/badge.png)](https://coveralls.io/r/rolobio/sshm?branch=coveralls-install)
+[![Coverage Status](https://coveralls.io/repos/rolobio/sshm/badge.png)](https://coveralls.io/r/rolobio/sshm?branch=master)
 [![Version](http://img.shields.io/pypi/v/sshm.svg)](https://pypi.python.org/pypi/sshm/)
 [![Downloads](http://img.shields.io/pypi/dm/sshm.svg)](https://pypi.python.org/pypi/sshm/)
 [![License](https://pypip.in/license/sshm/badge.png)](https://gnu.org/licenses/gpl.html)
