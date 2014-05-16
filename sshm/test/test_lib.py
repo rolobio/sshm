@@ -209,9 +209,6 @@ class Test_sshm(unittest.TestCase):
         lib.popen = orig
 
 
-class Test_sshm2(unittest.TestCase):
-
-
     def test_sshm_ssh(self):
         """
         Test how sshm uses the 'ssh' function.
@@ -226,9 +223,13 @@ class Test_sshm2(unittest.TestCase):
         orig = lib.ssh
         lib.ssh = MagicMock(side_effect=side_effect)
 
+        from io import BytesIO
+        stdin_contents = b'stdin contents'
+        stdin = BytesIO(stdin_contents)
+
         extra_arguments = ['-o=Something yes',]
         result_list = list(lib.sshm('example[01-03].com', 'foo',
-            extra_arguments=extra_arguments))
+            extra_arguments=extra_arguments, stdin=stdin))
 
         for result in result_list:
             self.assertIn('thread_num', result)
@@ -253,8 +254,10 @@ class Test_sshm2(unittest.TestCase):
             self.assertEqual(expected_uri, uri)
             self.assertEqual('foo', command)
             self.assertEqual(extra_arguments, extra_arguments)
+            self.assertEqual(stdin.tobytes(), stdin_contents)
             self.assertEqual(type(stdin), type(memoryview(bytes())))
 
         lib.ssh = orig
+
 
 
