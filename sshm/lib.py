@@ -239,7 +239,10 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
         if sys.version_info[:1] <= (2, 7): # pragma: no cover version specific
             stdin_contents = stdin.read()
         else: # pragma: no cover version specific
-            stdin_contents = stdin.buffer.read()
+            if 'buffer' in dir(stdin):
+                stdin_contents = stdin.buffer.read()
+            else:
+                stdin_contents = stdin.read()
         stdin.close()
     else:
         # No stdin provided
