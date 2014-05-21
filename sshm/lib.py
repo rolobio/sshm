@@ -118,8 +118,9 @@ def popen(cmd, stdin, stdout, stderr): # pragma: no cover
 
 # ZMQ urls used to connect sshm and ssh
 SINK_URL = 'inproc://sink'
+STDIN_URL = 'inproc://stdin'
 
-def ssh(thread_num, context, uri, command, extra_arguments, stdin=None):
+def ssh(thread_num, context, uri, command, extra_arguments, if_stdin=False):
     """
     Create an SSH connection to 'uri'.  Execute 'command' and
     pass any stdin to this ssh session.  Return the results via ZMQ (SINK_URL).
@@ -136,8 +137,9 @@ def ssh(thread_num, context, uri, command, extra_arguments, stdin=None):
     @param extra_arguments: Pass these extra arguments to the ssh call.
     @type extra_arguments: list
 
-    @param stdin: A memoryview object containing sshm's stdin.
-    @type stdin: memory
+    @param if_stdin: If this is True, this function will request stdin and
+        write it to proc's stdin.
+    @type if_stdin: bool
 
     @returns: None
     """
@@ -150,6 +152,9 @@ def ssh(thread_num, context, uri, command, extra_arguments, stdin=None):
     # Send the results to this sink
     sink = context.socket(zmq.PUSH)
     sink.connect(SINK_URL)
+    # Get stdin
+    stdin_sock = context.socket(zmq.REQ)
+    stdin_sock.connect(STDIN_URL)
 
     try:
         cmd = ['ssh',]
@@ -170,8 +175,28 @@ def ssh(thread_num, context, uri, command, extra_arguments, stdin=None):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,)
 
+        # Write stdin to the PIPE until it is empty
+        if if_stdin:
+            while True:
+                stdin_sock.send_pyobj(thread_num)
+                chunk = stdin_sock.recv_pyobj()
+                # If the chunk is None, the stdin is empty
+                if chunk == None:
+                    break
+                # Continually attempt to send the chunk while the process is alive
+                while proc.poll() == None:
+                    try:
+                        proc.stdin.write(chunk)
+                        # successfully sent the chunk, get the next one
+                        break
+                    except IOError:
+                        # Temporary error, attempt to send the chunk again
+                        pass
+
         # Get the output
-        stdout, stderr = proc.communicate(input=stdin)
+        stdout, stderr = proc.communicate()
+        # Close stdin now that the process has ended
+        proc.stdin.close()
         # Convert output into a usable format
         if 'decode' in dir(stdout): # pragma: no cover version specific
             stdout = stdout.decode()
@@ -199,6 +224,7 @@ def ssh(thread_num, context, uri, command, extra_arguments, stdin=None):
     sink.close()
 
 
+CHUNK_SIZE = 1024
 
 def sshm(servers, command, extra_arguments=None, stdin=None):
     """
@@ -234,43 +260,75 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     # The results of each ssh call is reported to this sink
     sink = context.socket(zmq.PULL)
     sink.bind(SINK_URL)
-
-    if stdin:
-        if sys.version_info[:1] <= (2, 7): # pragma: no cover version specific
-            stdin_contents = stdin.read()
-        else: # pragma: no cover version specific
-            if 'buffer' in dir(stdin):
-                stdin_contents = stdin.buffer.read()
-            else:
-                stdin_contents = stdin.read()
-        stdin.close()
-    else:
-        # No stdin provided
-        stdin_contents = bytes()
+    # Used to send stdin to workers
+    stdin_sock = context.socket(zmq.REP)
+    stdin_sock.bind(STDIN_URL)
 
     # Start each SSH connection in it's own thread
     threads = []
     thread_num = 0
     for uri in uri_expansion(servers):
-        stdin_mv = memoryview(stdin_contents)
+        # Only tell the thread to get stdin if there is some.
+        if_stdin = True if stdin else False
         thread = threading.Thread(target=ssh,
                 # Provide the arguments that ssh needs.
-                args=(thread_num, context, uri, command, extra_arguments, stdin_mv)
+                args=(thread_num, context, uri, command, extra_arguments, if_stdin)
                 )
         thread.start()
         threads.append(thread)
         thread_num += 1
 
-    # If a thread sends a result, clean it up.
+    # Close completed threads and send stdin as fast as the thread can
+    # receive it.
+    poller = zmq.Poller()
+    poller.register(sink, zmq.POLLIN)
+    poller.register(stdin_sock, zmq.POLLIN)
+
+    stdin_queue = {}
+    stdin_chunks = {}
+    chunk_count = 1
+
     completed_threads = 0
     while completed_threads != len(threads):
-        results = sink.recv_pyobj()
-        completed_threads += 1
-        yield results
-        threads[results['thread_num']].join()
+        socks = dict(poller.poll())
+        if socks.get(sink) == zmq.POLLIN:
+            # A thread has finished, yield the results
+            results = sink.recv_pyobj()
+            completed_threads += 1
+            yield results
+            threads[results['thread_num']].join()
+        elif socks.get(stdin_sock) == zmq.POLLIN:
+            # A thread requests it's stdin, give it it's next chunk.
+            thread_num = stdin_sock.recv_pyobj()
+            if thread_num not in stdin_queue:
+                # The thread hasn't received stdin yet, start it at 1
+                stdin_queue[thread_num] = 1
+            # Read the next chunk to memory if it hasn't been read in yet
+            if stdin_queue[thread_num] not in stdin_chunks:
+                chunk = stdin.read(CHUNK_SIZE)
+                if len(chunk) == 0:
+                    chunk = None
+                stdin_chunks[chunk_count] = chunk
+                chunk_count += 1
+
+            # Send their current chunk
+            chunk = stdin_chunks[stdin_queue[thread_num]]
+            stdin_sock.send_pyobj(chunk)
+            # Set the next chunk
+            stdin_queue[thread_num] += 1
+
+            # Delete old chunks if they are unused
+            min_needed = min([stdin_queue[i] for i in stdin_queue])
+            min_in_memory = min(stdin_chunks)
+            if min_needed < min_in_memory:
+                for i in range(min_needed, min_in_memory):
+                    del stdin_chunks[i]
+
+
 
     # Cleanup
     sink.close()
+    stdin_sock.close()
     context.term()
 
 
