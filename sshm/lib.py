@@ -224,7 +224,7 @@ def ssh(thread_num, context, uri, command, extra_arguments, if_stdin=False):
     sink.close()
 
 
-CHUNK_SIZE = 1024
+CHUNK_SIZE = 65536
 
 def sshm(servers, command, extra_arguments=None, stdin=None):
     """
@@ -284,7 +284,7 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     poller.register(sink, zmq.POLLIN)
     poller.register(stdin_sock, zmq.POLLIN)
 
-    stdin_queue = {}
+    stdin_queue = dict(zip(range(len(threads)), [1 for i in range(len(threads))]))
     stdin_chunks = {}
     chunk_count = 1
 
@@ -300,9 +300,6 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
         elif socks.get(stdin_sock) == zmq.POLLIN:
             # A thread requests it's stdin, give it it's next chunk.
             thread_num = stdin_sock.recv_pyobj()
-            if thread_num not in stdin_queue:
-                # The thread hasn't received stdin yet, start it at 1
-                stdin_queue[thread_num] = 1
             # Read the next chunk to memory if it hasn't been read in yet
             if stdin_queue[thread_num] not in stdin_chunks:
                 chunk = stdin.read(CHUNK_SIZE)
@@ -321,8 +318,7 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
             min_needed = min([stdin_queue[i] for i in stdin_queue])
             min_in_memory = min(stdin_chunks)
             if min_needed < min_in_memory:
-                for i in range(min_needed, min_in_memory):
-                    del stdin_chunks[i]
+                del stdin_chunks[min_needed]
 
 
 

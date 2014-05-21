@@ -72,7 +72,7 @@ def main():
     # Perform the command on each server, print the results to stdout.
     results = sshm(args.servers, command, extra_arguments, stdin)
     for result in results:
-        if 'stdout' in result:
+        if result.get('stdout'):
             _print_handling_newlines(result['uri'],
                     result['return_code'],
                     result['stdout']
@@ -84,7 +84,7 @@ def main():
                     'Error: ',
                     sys.stderr
                     )
-        if 'traceback' in result:
+        if result.get('traceback'):
             _print_handling_newlines(result['uri'],
                     result['traceback'],
                     'Traceback: ',
