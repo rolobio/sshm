@@ -187,6 +187,40 @@ class Test_sshm(unittest.TestCase):
         lib.popen = orig
 
 
+    def test_stdin(self):
+        """
+        Test the STDIN sending process between sshm and ssh.
+        """
+        sub, proc = fake_subprocess('', '', 0)
+        orig = lib.popen
+        lib.popen = sub.popen
+
+        # Fake the process's poll to be None once
+        c = [1, None]
+        def none_once():
+            return c.pop()
+        proc.poll = none_once
+
+        from io import BytesIO
+        stdin_contents = b'foobar'
+        stdin = BytesIO(stdin_contents)
+
+        result_list = list(lib.sshm('example.com', 'exit', stdin=stdin))
+        self.assertEqual(1, len(result_list))
+        self.assertEqual(result_list[0],
+                {
+                    'stdout': '',
+                    'uri': 'example.com',
+                    'cmd': ['ssh', 'example.com', 'exit'],
+                    'return_code': 0,
+                    'stderr': '',
+                    'thread_num':0,
+                    }
+                )
+
+        lib.popen = orig
+
+
     def test_triple(self):
         """
         You can SSH into three servers at once.
