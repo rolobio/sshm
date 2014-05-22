@@ -6,8 +6,10 @@ python:
 # command to install dependencies
 install: "pip install -r requirements.tests.txt"
 script:
+    # Run pyflakes
+  - "pyflakes sshm"
     # Run tests with coverage
-  - 'coverage run setup.py test'
+  - "coverage run setup.py test"
   - "coverage report -m"
     # install sshm
   - "python setup.py install"
