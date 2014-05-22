@@ -86,7 +86,7 @@ class TestReal(unittest.TestCase):
         """
         Binary files are transfered correctly using STDIN.
         """
-        contents = os.urandom(10000)
+        contents = os.urandom(9999999)
 
         with _get_temp_file(contents) as file_handle, \
         tempfile.NamedTemporaryFile() as tfile_handle:
