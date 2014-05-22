@@ -195,6 +195,12 @@ class Test_sshm(unittest.TestCase):
         orig = lib.popen
         lib.popen = sub.popen
 
+        # Fake the process's poll to be None once
+        c = [1, None]
+        def none_once():
+            return c.pop()
+        proc.poll = none_once
+
         from io import BytesIO
         stdin_contents = b'foobar'
         stdin = BytesIO(stdin_contents)
