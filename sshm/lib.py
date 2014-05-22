@@ -271,30 +271,25 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     # Start each SSH connection in it's own thread
     threads = []
     thread_num = 0
+    # Only tell the thread to get stdin if there is some.
+    if_stdin = True if stdin else False
     for uri in uri_expansion(servers):
-        # Only tell the thread to get stdin if there is some.
-        if_stdin = True if stdin else False
-        thread = threading.Thread(target=ssh,
-                # Provide the arguments that ssh needs.
-                args=(thread_num, context, uri, command, extra_arguments, if_stdin)
-                )
+        thread = threading.Thread(target=ssh, args=(thread_num, context, uri,
+            command, extra_arguments, if_stdin))
         thread.start()
         threads.append(thread)
         thread_num += 1
 
-    # Close completed threads and send stdin as fast as the thread can
-    # receive it.
     poller = zmq.Poller()
     poller.register(sink, zmq.POLLIN)
     poller.register(stdin_sock, zmq.POLLIN)
 
-    stdin_queue = dict(zip(range(len(threads)), [1 for i in range(len(threads))]))
-    stdin_chunks = {}
-    chunk_count = 1
-
     # Report any results that have been returned and send STDIN in chunks
     # as fast as the threads can receive it.
     completed_threads = 0
+    stdin_queue = dict(zip(range(len(threads)), [1 for i in range(len(threads))]))
+    stdin_chunks = {}
+    chunk_count = 1
     while completed_threads != len(threads):
         socks = dict(poller.poll())
         if socks.get(sink) == zmq.POLLIN:
@@ -325,8 +320,6 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
             min_in_memory = min(stdin_chunks)
             if min_needed > min_in_memory:
                 del stdin_chunks[min_in_memory]
-
-
 
     # Cleanup
     sink.close()
