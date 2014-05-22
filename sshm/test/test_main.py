@@ -3,9 +3,8 @@
 This module tests what is testable in main.py
 """
 from sshm.main import get_argparse_args, _print_handling_newlines
-
-from mock import MagicMock
 import unittest
+
 try:
     # Python2.7
     from StringIO import StringIO

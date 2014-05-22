@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 import re
 import subprocess
-import sys
 import threading
 import zmq
 from itertools import product
@@ -75,8 +74,8 @@ def uri_expansion(input_str):
         if (prefix or suffix) and range_str:
             # Expand the URL
             i = product([prefix,], expand_ranges(range_str), [suffix,])
-            i = [''.join(iter(i)) for i in i]
-            new_uris.extend([create_uri(user, i, port) for i in i])
+            i = [''.join(iter(j)) for j in i]
+            new_uris.extend([create_uri(user, k, port) for k in i])
         elif ip_addr:
             # Check the length of this IP address
             if ip_addr.count('.') != 3:
@@ -84,13 +83,13 @@ def uri_expansion(input_str):
 
             if '-' in ip_addr or ',' in ip_addr:
                 # Expand any ranges in the octets
-                i = [expand_ranges(i) for i in ip_addr.split('.')]
+                x = [expand_ranges(i) for i in ip_addr.split('.')]
                 # Create all products for each expanded octet
-                i = product(i[0], i[1], i[2], i[3])
+                j = product(x[0], x[1], x[2], x[3])
                 # Join the octets back together with dots
-                i = ['.'.join(iter(i)) for i in i]
+                l = ['.'.join(iter(k)) for k in j]
                 # Extend new_uris with the new URIs, conver them to a URI
-                new_uris.extend([create_uri(user, i, port) for i in i])
+                new_uris.extend([create_uri(user, i, port) for i in l])
             else:
                 # No expansion necessary for IP
                 new_uris.append(create_uri(user, ip_addr, port))
