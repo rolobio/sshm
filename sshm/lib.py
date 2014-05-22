@@ -189,7 +189,7 @@ def ssh(thread_num, context, uri, command, extra_arguments, if_stdin=False):
                         proc.stdin.write(chunk)
                         # successfully sent the chunk, get the next one
                         break
-                    except IOError:
+                    except IOError: # pragma: no cover not a predictable error
                         # Temporary error, attempt to send the chunk again
                         pass
 
@@ -264,6 +264,10 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     stdin_sock = context.socket(zmq.REP)
     stdin_sock.bind(STDIN_URL)
 
+    # Python 3+ compatibility
+    if 'buffer' in dir(stdin): # pragma: no cover version specific
+        stdin = stdin.buffer
+
     # Start each SSH connection in it's own thread
     threads = []
     thread_num = 0
@@ -288,6 +292,8 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     stdin_chunks = {}
     chunk_count = 1
 
+    # Report any results that have been returned and send STDIN in chunks
+    # as fast as the threads can receive it.
     completed_threads = 0
     while completed_threads != len(threads):
         socks = dict(poller.poll())
@@ -317,8 +323,8 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
             # Delete old chunks if they are unused
             min_needed = min([stdin_queue[i] for i in stdin_queue])
             min_in_memory = min(stdin_chunks)
-            if min_needed < min_in_memory:
-                del stdin_chunks[min_needed]
+            if min_needed > min_in_memory:
+                del stdin_chunks[min_in_memory]
 
 
 
