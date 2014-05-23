@@ -72,7 +72,7 @@ def main():
     # Perform the command on each server, print the results to stdout.
     results = sshm(args.servers, command, extra_arguments, stdin)
     for result in results:
-        if result.get('stdout'):
+        if result.get('stdout') != None:
             _print_handling_newlines(result['uri'],
                     result['return_code'],
                     result['stdout']
