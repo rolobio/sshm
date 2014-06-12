@@ -9,8 +9,7 @@ script:
     # Run pyflakes
   - "pyflakes sshm"
     # Run tests with coverage
-  - "coverage run setup.py test"
-  - "coverage report -m"
+  - "green -v . --run-coverage"
     # install sshm
   - "python setup.py install"
     # sshm should be available on console
