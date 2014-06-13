@@ -126,7 +126,7 @@ class Test_ssh(unittest.TestCase):
         The ssh command arguments change when a port is specified.
         """
         sub, proc = fake_subprocess('', '', 0)
-        orig = lib.popen
+        self.addCleanup(setattr, lib, 'popen', lib.popen)
         lib.popen = sub.popen
 
         context, socket = fake_context()
@@ -138,8 +138,6 @@ class Test_ssh(unittest.TestCase):
         self.assertEqual(cmd,
                 ['ssh', 'asdf', '-p', '9678', 'command'])
 
-        lib.popen = orig
-
 
     def test_exception(self):
         """
@@ -147,7 +145,7 @@ class Test_ssh(unittest.TestCase):
         """
         sub, proc = fake_subprocess('', '', 0)
         proc.communicate.side_effect = Exception('Oh no!')
-        orig = lib.popen
+        self.addCleanup(setattr, lib, 'popen', lib.popen)
         lib.popen = sub.popen
 
         context, socket = fake_context()
@@ -156,8 +154,6 @@ class Test_ssh(unittest.TestCase):
 
         self.assertIn('traceback', results)
         self.assertIn('Oh no!', results['traceback'])
-
-        lib.popen = orig
 
 
 
@@ -168,7 +164,7 @@ class Test_sshm(unittest.TestCase):
         Test a simple sshm usage.
         """
         sub, proc = fake_subprocess('', '', 0)
-        orig = lib.popen
+        self.addCleanup(setattr, lib, 'popen', lib.popen)
         lib.popen = sub.popen
 
         result_list = list(lib.sshm('example.com', 'exit'))
@@ -184,15 +180,13 @@ class Test_sshm(unittest.TestCase):
                     }
                 )
 
-        lib.popen = orig
-
 
     def test_stdin(self):
         """
         Test the STDIN sending process between sshm and ssh.
         """
         sub, proc = fake_subprocess('', '', 0)
-        orig = lib.popen
+        self.addCleanup(setattr, lib, 'popen', lib.popen)
         lib.popen = sub.popen
 
         # Fake the process's poll to be None once
@@ -218,15 +212,13 @@ class Test_sshm(unittest.TestCase):
                     }
                 )
 
-        lib.popen = orig
-
 
     def test_triple(self):
         """
         You can SSH into three servers at once.
         """
         sub, proc = fake_subprocess('', '', 0)
-        orig = lib.popen
+        self.addCleanup(setattr, lib, 'popen', lib.popen)
         lib.popen = sub.popen
 
         results_list = list(lib.sshm('example[01-03].com', 'exit'))
@@ -240,8 +232,6 @@ class Test_sshm(unittest.TestCase):
                     ['example01.com', 'example02.com', 'example03.com']
                     )
 
-        lib.popen = orig
-
 
     def test_sshm_ssh(self):
         """
@@ -254,7 +244,7 @@ class Test_sshm(unittest.TestCase):
             sink = context.socket(zmq.PUSH)
             sink.connect(lib.SINK_URL)
             sink.send_pyobj({'thread_num':thread_num,})
-        orig = lib.ssh
+        self.addCleanup(setattr, lib, 'ssh', lib.ssh)
         lib.ssh = MagicMock(side_effect=side_effect)
 
         from io import BytesIO
@@ -289,8 +279,6 @@ class Test_sshm(unittest.TestCase):
             self.assertEqual('foo', command)
             self.assertEqual(extra_arguments, extra_arguments)
             self.assertTrue(stdin)
-
-        lib.ssh = orig
 
 
 
