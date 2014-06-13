@@ -51,7 +51,7 @@ class TestFuncs(unittest.TestCase):
                 # Combinations
                 ('example.com,1.2.3.4', ['example.com', '1.2.3.4']),
                 ('root@example.com:1234,root@1.2.3.4:1234', ['root@example.com:1234', 'root@1.2.3.4:1234']),
-                ('asdf@example[11-13,17].com:1234,root@1.2,5-7.3.4:1234', ['asdf@example11.com:1234', 'asdf@example12.com:1234', 'asdf@example13.com:1234', 'asdf@example17.com:1234', 'root@1.2.3.4:1234', 'root@1.5.3.4:1234', 'root@1.6.3.4:1234', 'root@1.7.3.4:1234']),
+                ('foo@example[11-13,17].com:1234,root@1.2,5-7.3.4:1234', ['foo@example11.com:1234', 'foo@example12.com:1234', 'foo@example13.com:1234', 'foo@example17.com:1234', 'root@1.2.3.4:1234', 'root@1.5.3.4:1234', 'root@1.6.3.4:1234', 'root@1.7.3.4:1234']),
                 ]
 
         for provided, expected in prov_exp:
@@ -130,13 +130,13 @@ class Test_ssh(unittest.TestCase):
         lib.popen = sub.popen
 
         context, socket = fake_context()
-        lib.ssh(1, context, 'asdf:9678', 'command', [])
+        lib.ssh(1, context, 'foo:9678', 'command', [])
 
         # Get the result that was sent in the socket
         self.assertEqual(socket.send_pyobj.call_count, 1)
         cmd = socket.send_pyobj.call_args_list[0][0][0]['cmd']
         self.assertEqual(cmd,
-                ['ssh', 'asdf', '-p', '9678', 'command'])
+                ['ssh', 'foo', '-p', '9678', 'command'])
 
 
     def test_exception(self):
@@ -149,7 +149,7 @@ class Test_ssh(unittest.TestCase):
         lib.popen = sub.popen
 
         context, socket = fake_context()
-        lib.ssh(1, context, 'asdf', '9678', 'command', [])
+        lib.ssh(1, context, 'foo', '9678', 'command', [])
         results = socket.send_pyobj.call_args_list[0][0][0]
 
         self.assertIn('traceback', results)
