@@ -36,16 +36,19 @@ def get_argparse_args(args=None):
             description=__long_description__)
     parser.add_argument('servers')
     parser.add_argument('command')
+    parser.add_argument('-p', '--strip-whitespace', action='store_true', default=False)
     parser.add_argument('--version', action='version', version='%(prog)s '+__version__)
     args, extra_args = parser.parse_known_args(args=args)
     return (args, args.command, extra_args)
 
 
-def _print_handling_newlines(uri, return_code, to_print, header='', file=sys.stdout):
+def _print_handling_newlines(uri, return_code, to_print, header='', strip_whitespace=False, file=sys.stdout):
     """
     Print "to_print" to "file" with the formatting needed to represent it's data
     properly.
     """
+    if strip_whitespace:
+        to_print = to_print.strip()
     if to_print.count('\n') == 0:
         sep = ' '
     else:
@@ -75,20 +78,23 @@ def main():
         if result.get('stdout') != None:
             _print_handling_newlines(result['uri'],
                     result['return_code'],
-                    result['stdout']
+                    result['stdout'],
+                    strip_whitespace=args.strip_whitespace,
                     )
         if result.get('stderr'):
             _print_handling_newlines(result['uri'],
                     result.get('return_code', ''),
                     result['stderr'],
                     'Error: ',
-                    sys.stderr
+                    strip_whitespace=args.strip_whitespace,
+                    file=sys.stderr,
                     )
         if result.get('traceback'):
             _print_handling_newlines(result['uri'],
                     result['traceback'],
                     'Traceback: ',
-                    sys.stderr
+                    strip_whitespace=args.strip_whitespace,
+                    file=sys.stderr,
                     )
 
     # Exit with non-zero when there is a failure

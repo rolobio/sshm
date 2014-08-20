@@ -23,6 +23,7 @@ class TestFuncs(unittest.TestCase):
         provided = ['example.com', 'ls']
         args, command, extra_args = get_argparse_args(provided)
         self.assertEqual(args.servers, 'example.com')
+        self.assertFalse(args.strip_whitespace)
         self.assertEqual(command, 'ls')
         self.assertEqual(extra_args, [])
 
@@ -30,6 +31,7 @@ class TestFuncs(unittest.TestCase):
         provided = ['example[1-3].com', 'exit']
         args, command, extra_args = get_argparse_args(provided)
         self.assertEqual(args.servers, 'example[1-3].com')
+        self.assertFalse(args.strip_whitespace)
         self.assertEqual(command, 'exit')
         self.assertEqual(extra_args, [])
 
@@ -43,8 +45,17 @@ class TestFuncs(unittest.TestCase):
         provided = ['example[1-3].com', 'exit', '-o UserKnownHostsFile=/dev/null']
         args, command, extra_args = get_argparse_args(provided)
         self.assertEqual(args.servers, 'example[1-3].com')
+        self.assertFalse(args.strip_whitespace)
         self.assertEqual(command, 'exit')
         self.assertEqual(extra_args, [provided[2],])
+
+        # You can strip whitespace
+        provided = ['-p', 'example[1-3].com', 'exit', '-o UserKnownHostsFile=/dev/null']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, 'example[1-3].com')
+        self.assertTrue(args.strip_whitespace)
+        self.assertEqual(command, 'exit')
+        self.assertEqual(extra_args, [provided[3],])
 
 
     def test__print_handling_newlines(self):
@@ -56,6 +67,7 @@ class TestFuncs(unittest.TestCase):
                 (('uri', 'return_code', 'to_print'), 'sshm: uri(return_code): to_print\n'),
                 (('uri', 'return_code', 'to_print', 'header'), 'sshm: headeruri(return_code): to_print\n'),
                 (('uri', 'return_code', 'to_print\n', 'header: '), 'sshm: header: uri(return_code):\nto_print\n\n'),
+                (('uri', 'return_code', '  whitespace stuff\n\n', 'header: ', True), 'sshm: header: uri(return_code): whitespace stuff\n'),
                 ]
 
         for provided, expected in prov_exp:
