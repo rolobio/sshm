@@ -1,13 +1,10 @@
 #! /usr/bin/env python3
 
 # This is the official version of sshm
-__version__ = '1.0'
+__version__ = '1.1'
 
 __long_description__ = '''
     SSH Multi v%s. SSH into multiple machines at once.
-
-    -p, --strip-whitespace   Strip the whitespace surrounding any returned
-                             data.
 
     Examples:
         Get a count of processes on each server:
