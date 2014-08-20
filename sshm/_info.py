@@ -6,6 +6,9 @@ __version__ = '1.0'
 __long_description__ = '''
     SSH Multi v%s. SSH into multiple machines at once.
 
+    -p, --strip-whitespace   Strip the whitespace surrounding any returned
+                             data.
+
     Examples:
         Get a count of processes on each server:
             sshm example1.com,example2.com,example3.com,mail[01-05].example.com,host[01-25].org "ps aux | wc -l"
