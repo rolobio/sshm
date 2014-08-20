@@ -37,9 +37,9 @@ def get_argparse_args(args=None):
     parser.add_argument('servers')
     parser.add_argument('command')
     parser.add_argument('-s', '--sorted-output', action='store_true', default=False,
-            help='Sort the output by the URI of each instance.  This will wait for all commands to finish before showing any output!')
+            help='Sort the output by the URI of each instance.  This will wait for all instances to finish before showing any output!')
     parser.add_argument('-p', '--strip-whitespace', action='store_true', default=False,
-            help='Removing and whitespace surrounding the output of each instance.')
+            help='Remove any whitespace surrounding the output of each instance.')
     parser.add_argument('--version', action='version', version='%(prog)s '+__version__)
     args, extra_args = parser.parse_known_args(args=args)
     return (args, args.command, extra_args)
