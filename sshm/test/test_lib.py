@@ -156,6 +156,68 @@ class Test_ssh(unittest.TestCase):
         self.assertIn('Oh no!', results['traceback'])
 
 
+    def test_formatting(self):
+        """
+        A dictionary of unique strings are provided to use when formatting
+        the command string.
+        """
+        sub, proc = fake_subprocess('', '', 0)
+        self.addCleanup(setattr, lib, 'popen', lib.popen)
+        lib.popen = sub.popen
+        context, socket = fake_context()
+
+        # No formatting in the command string
+        lib.ssh(1, context, 'foo', 'command', [])
+        cmd = socket.send_pyobj.call_args_list[0][0][0]['cmd']
+        self.assertEqual(cmd,
+                ['ssh', 'foo', 'command'])
+        socket.reset_mock()
+
+        # URI in formatting
+        lib.ssh(1, context, 'foo', 'command{uri}', [])
+        cmd = socket.send_pyobj.call_args_list[0][0][0]['cmd']
+        self.assertEqual(cmd,
+                ['ssh', 'foo', 'commandfoo'])
+        socket.reset_mock()
+
+        # FQDN in formatting
+        lib.ssh(1, context, 'www.foo.com:22', 'command{fqdn}', [])
+        cmd = socket.send_pyobj.call_args_list[0][0][0]['cmd']
+        self.assertEqual(cmd,
+                ['ssh', 'www.foo.com', '-p', '22', 'commandwww.foo.com'])
+        socket.reset_mock()
+
+        # Subdomain in formatting
+        lib.ssh(1, context, 'foo.example.com', 'command{subdomain}', [])
+        cmd = socket.send_pyobj.call_args_list[0][0][0]['cmd']
+        self.assertEqual(cmd,
+                ['ssh', 'foo.example.com', 'commandfoo'])
+        socket.reset_mock()
+
+        # Multiple formatting
+        lib.ssh(1, context, 'foo.example.com:8888', 'command {subdomain} {fqdn} {uri}', [])
+        cmd = socket.send_pyobj.call_args_list[0][0][0]['cmd']
+        self.assertEqual(cmd,
+                ['ssh', 'foo.example.com', '-p', '8888',
+                    'command foo foo.example.com foo.example.com:8888'])
+        socket.reset_mock()
+
+        # Bad formatting
+        lib.ssh(1, context, 'foo', 'command{bad}', [])
+        self.assertIn('traceback', socket.send_pyobj.call_args_list[0][0][0])
+        socket.reset_mock()
+
+        # Disable formatting
+        self.addCleanup(setattr, lib, 'disable_formatting', lib.disable_formatting)
+        lib.disable_formatting = True
+        lib.ssh(1, context, 'foo', 'command{bad}', [])
+        self.assertNotIn('traceback', socket.send_pyobj.call_args_list[0][0][0])
+        cmd = socket.send_pyobj.call_args_list[0][0][0]['cmd']
+        self.assertEqual(cmd,
+                ['ssh', 'foo', 'command{bad}'])
+        socket.reset_mock()
+
+
 
 class Test_sshm(unittest.TestCase):
 

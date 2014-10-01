@@ -7,6 +7,7 @@ from itertools import product
 from traceback import format_exc
 
 __all__ = ['sshm', 'uri_expansion']
+disable_formatting = False
 
 
 # This is used to parse a range string
@@ -155,10 +156,21 @@ def ssh(thread_num, context, uri, command, extra_arguments, if_stdin=False):
     stdin_sock = context.socket(zmq.REQ)
     stdin_sock.connect(STDIN_URL)
 
+    # Create the dictionary that can be used in command formatting
+    formatting_dict = {
+            'uri':uri,
+            'fqdn':uri.split(':')[0],
+            'subdomain':uri.split('.')[0],
+            'num':thread_num,
+            }
+
     try:
         cmd = ['ssh',]
         # Add extra arguments after ssh, but before the uri and command
         cmd.extend(extra_arguments or [])
+        # Format the command string as requested by the user
+        if not disable_formatting:
+            command = command.format(**formatting_dict)
         # Only change the port at the user's request.  Otherwise, use SSH's
         # default port.
         try:
@@ -225,7 +237,7 @@ def ssh(thread_num, context, uri, command, extra_arguments, if_stdin=False):
 
 CHUNK_SIZE = 65536
 
-def sshm(servers, command, extra_arguments=None, stdin=None):
+def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_var=False):
     """
     SSH into multiple servers and execute "command". Pass stdin to these ssh
     handles.
@@ -255,6 +267,10 @@ def sshm(servers, command, extra_arguments=None, stdin=None):
     @returns: A list containing (success, handle, message) from each method
         call.
     """
+    # Disable formatting when requested
+    global disable_formatting
+    disable_formatting = disable_formatting_var
+
     context = zmq.Context()
     # The results of each ssh call is reported to this sink
     sink = context.socket(zmq.PULL)

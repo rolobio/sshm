@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 # This is the official version of sshm
-__version__ = '1.1'
+__version__ = '1.2'
 
 __long_description__ = '''
     SSH Multi v%s. SSH into multiple machines at once.
@@ -21,5 +21,16 @@ __long_description__ = '''
 
         Specify a per-host port:
             sshm example1.com:123,example2.com,example4.com:78 "exit"
+
+        Format the command per-host:
+            sshm example[1-3].com "echo {fqdn}"
+
+            Outputs:
+                sshm: example1.com(0): example1.com
+                sshm: example2.com(0): example2.com
+                sshm: example3.com(0): example3.com
+
+            Possible formatting variables:
+                uri, fqdn, subdomain, num
     ''' % (__version__)
 

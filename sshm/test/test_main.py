@@ -24,6 +24,7 @@ class TestFuncs(unittest.TestCase):
         args, command, extra_args = get_argparse_args(provided)
         self.assertEqual(args.servers, 'example.com')
         self.assertFalse(args.strip_whitespace)
+        self.assertFalse(args.disable_formatting)
         self.assertEqual(command, 'ls')
         self.assertEqual(extra_args, [])
 
@@ -32,6 +33,7 @@ class TestFuncs(unittest.TestCase):
         args, command, extra_args = get_argparse_args(provided)
         self.assertEqual(args.servers, 'example[1-3].com')
         self.assertFalse(args.strip_whitespace)
+        self.assertFalse(args.disable_formatting)
         self.assertEqual(command, 'exit')
         self.assertEqual(extra_args, [])
 
@@ -46,6 +48,7 @@ class TestFuncs(unittest.TestCase):
         args, command, extra_args = get_argparse_args(provided)
         self.assertEqual(args.servers, 'example[1-3].com')
         self.assertFalse(args.strip_whitespace)
+        self.assertFalse(args.disable_formatting)
         self.assertEqual(command, 'exit')
         self.assertEqual(extra_args, [provided[2],])
 
@@ -54,8 +57,18 @@ class TestFuncs(unittest.TestCase):
         args, command, extra_args = get_argparse_args(provided)
         self.assertEqual(args.servers, 'example[1-3].com')
         self.assertTrue(args.strip_whitespace)
+        self.assertFalse(args.disable_formatting)
         self.assertEqual(command, 'exit')
         self.assertEqual(extra_args, [provided[3],])
+
+        # Disable formatting
+        provided = ['-d', 'example.com', 'ls']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, 'example.com')
+        self.assertFalse(args.strip_whitespace)
+        self.assertTrue(args.disable_formatting)
+        self.assertEqual(command, 'ls')
+        self.assertEqual(extra_args, [])
 
 
     def test__print_handling_newlines(self):
