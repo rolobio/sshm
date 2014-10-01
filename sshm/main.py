@@ -40,6 +40,8 @@ def get_argparse_args(args=None):
             help='Sort the output by the URI of each instance.  This will wait for all instances to finish before showing any output!')
     parser.add_argument('-p', '--strip-whitespace', action='store_true', default=False,
             help='Remove any whitespace surrounding the output of each instance.')
+    parser.add_argument('-d', '--disable-formatting', action='store_true', default=False,
+            help='Disable command formatting.')
     parser.add_argument('--version', action='version', version='%(prog)s '+__version__)
     args, extra_args = parser.parse_known_args(args=args)
     return (args, args.command, extra_args)
@@ -76,7 +78,7 @@ def main():
         stdin = None
 
     # Perform the command on each server, print the results to stdout.
-    results = sshm(args.servers, command, extra_arguments, stdin)
+    results = sshm(args.servers, command, extra_arguments, stdin, args.disable_formatting)
     # If a sorted output is requested, gather all results before output.
     if args.sorted_output:
         results = list(results)
