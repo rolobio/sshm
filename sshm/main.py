@@ -42,12 +42,14 @@ def get_argparse_args(args=None):
             help='Remove any whitespace surrounding the output of each instance.')
     parser.add_argument('-d', '--disable-formatting', action='store_true', default=False,
             help='Disable command formatting.')
+    parser.add_argument('-q', '--quiet', action='store_true', default=False,
+            help='Hide server information on output.  This implies sorted.')
     parser.add_argument('--version', action='version', version='%(prog)s '+__version__)
     args, extra_args = parser.parse_known_args(args=args)
     return (args, args.command, extra_args)
 
 
-def _print_handling_newlines(uri, return_code, to_print, header='', strip_whitespace=False, file=sys.stdout):
+def _print_handling_newlines(uri, return_code, to_print, header='', strip_whitespace=False, quiet=False, file=sys.stdout):
     """
     Print "to_print" to "file" with the formatting needed to represent it's data
     properly.
@@ -58,7 +60,14 @@ def _print_handling_newlines(uri, return_code, to_print, header='', strip_whites
         sep = ' '
     else:
         sep = '\n'
-    print('sshm: {}{}({}):{}{}'.format(header, uri, return_code, sep, to_print), file=file)
+    output_str = 'sshm: {header}{uri}({return_code}):{sep}{to_print}'
+    if quiet:
+        output_str = '{to_print}'
+    print(output_str.format(header=header,
+        uri=uri,
+        return_code=return_code,
+        sep=sep,
+        to_print=to_print), file=file)
 
 
 def main():
@@ -90,6 +99,7 @@ def main():
                     result['return_code'],
                     result['stdout'],
                     strip_whitespace=args.strip_whitespace,
+                    quiet=args.quiet,
                     )
         if result.get('stderr'):
             _print_handling_newlines(result['uri'],
@@ -97,6 +107,7 @@ def main():
                     result['stderr'],
                     'Error: ',
                     strip_whitespace=args.strip_whitespace,
+                    quiet=args.quiet,
                     file=sys.stderr,
                     )
         if result.get('traceback'):
@@ -104,6 +115,7 @@ def main():
                     result['traceback'],
                     'Traceback: ',
                     strip_whitespace=args.strip_whitespace,
+                    quiet=args.quiet,
                     file=sys.stderr,
                     )
 
