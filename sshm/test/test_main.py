@@ -74,8 +74,7 @@ class TestFuncs(unittest.TestCase):
         provided = ['-q', 'example.com', 'ls']
         args, command, extra_args = get_argparse_args(provided)
         self.assertEqual(args.servers, 'example.com')
-        self.assertFalse(args.strip_whitespace)
-        self.assertFalse(args.disable_formatting)
+        self.assertTrue(args.sorted_output)
         self.assertTrue(args.quiet)
         self.assertEqual(command, 'ls')
         self.assertEqual(extra_args, [])

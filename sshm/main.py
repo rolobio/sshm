@@ -46,6 +46,8 @@ def get_argparse_args(args=None):
             help='Hide server information on output.  This implies sorted.')
     parser.add_argument('--version', action='version', version='%(prog)s '+__version__)
     args, extra_args = parser.parse_known_args(args=args)
+    if args.quiet:
+        args.sorted_output = True
     return (args, args.command, extra_args)
 
 
