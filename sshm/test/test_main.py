@@ -70,6 +70,15 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(command, 'ls')
         self.assertEqual(extra_args, [])
 
+        # You can hide server information output
+        provided = ['-q', 'example.com', 'ls']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, 'example.com')
+        self.assertTrue(args.sorted_output)
+        self.assertTrue(args.quiet)
+        self.assertEqual(command, 'ls')
+        self.assertEqual(extra_args, [])
+
 
     def test__print_handling_newlines(self):
         """
@@ -81,6 +90,7 @@ class TestFuncs(unittest.TestCase):
                 (('uri', 'return_code', 'to_print', 'header'), 'sshm: headeruri(return_code): to_print\n'),
                 (('uri', 'return_code', 'to_print\n', 'header: '), 'sshm: header: uri(return_code):\nto_print\n\n'),
                 (('uri', 'return_code', '  whitespace stuff\n\n', 'header: ', True), 'sshm: header: uri(return_code): whitespace stuff\n'),
+                (('uri', 'return_code', 'to_print', '', False, True), 'to_print\n'),
                 ]
 
         for provided, expected in prov_exp:
