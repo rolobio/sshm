@@ -22,7 +22,7 @@ class TestFuncs(unittest.TestCase):
         # Valid
         provided = ['example.com', 'ls']
         args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example.com')
+        self.assertEqual(args.servers, ['example.com'])
         self.assertFalse(args.strip_whitespace)
         self.assertFalse(args.disable_formatting)
         self.assertEqual(command, 'ls')
@@ -31,7 +31,7 @@ class TestFuncs(unittest.TestCase):
         # Valid
         provided = ['example[1-3].com', 'exit']
         args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example[1-3].com')
+        self.assertEqual(args.servers, ['example[1-3].com'])
         self.assertFalse(args.strip_whitespace)
         self.assertFalse(args.disable_formatting)
         self.assertEqual(command, 'exit')
@@ -44,27 +44,27 @@ class TestFuncs(unittest.TestCase):
         self.assertRaises(SystemExit, get_argparse_args, provided)
 
         # Extra arguments
-        provided = ['example[1-3].com', 'exit', '-o UserKnownHostsFile=/dev/null']
+        provided = ['example[1-3].com', '"exit"', '-o UserKnownHostsFile=/dev/null']
         args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example[1-3].com')
+        self.assertEqual(args.servers, ['example[1-3].com'])
         self.assertFalse(args.strip_whitespace)
         self.assertFalse(args.disable_formatting)
-        self.assertEqual(command, 'exit')
+        self.assertEqual(command, '"exit"')
         self.assertEqual(extra_args, [provided[2],])
 
         # You can strip whitespace
-        provided = ['-p', 'example[1-3].com', 'exit', '-o UserKnownHostsFile=/dev/null']
+        provided = ['-p', '-o UserKnownHostsFile=/dev/null', '-o StrictHostKeyChecking=no', 'example[1-3].com', 'exit']
         args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example[1-3].com')
+        self.assertEqual(args.servers, ['example[1-3].com'])
         self.assertTrue(args.strip_whitespace)
         self.assertFalse(args.disable_formatting)
         self.assertEqual(command, 'exit')
-        self.assertEqual(extra_args, [provided[3],])
+        self.assertEqual(extra_args, provided[1:3])
 
         # Disable formatting
         provided = ['-d', 'example.com', 'ls']
         args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example.com')
+        self.assertEqual(args.servers, ['example.com'])
         self.assertFalse(args.strip_whitespace)
         self.assertTrue(args.disable_formatting)
         self.assertEqual(command, 'ls')
@@ -73,9 +73,16 @@ class TestFuncs(unittest.TestCase):
         # You can hide server information output
         provided = ['-q', 'example.com', 'ls']
         args, command, extra_args = get_argparse_args(provided)
-        self.assertEqual(args.servers, 'example.com')
+        self.assertEqual(args.servers, ['example.com'])
         self.assertTrue(args.sorted_output)
         self.assertTrue(args.quiet)
+        self.assertEqual(command, 'ls')
+        self.assertEqual(extra_args, [])
+
+        # You can specify multiple groups of targets
+        provided = ['example.com', 'user@mail.example[1-2].com', 'ls']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, ['example.com', 'user@mail.example[1-2].com'])
         self.assertEqual(command, 'ls')
         self.assertEqual(extra_args, [])
 

@@ -34,7 +34,7 @@ def get_argparse_args(args=None):
     parser = argparse.ArgumentParser(
             formatter_class=argparse.RawDescriptionHelpFormatter,
             description=__long_description__)
-    parser.add_argument('servers')
+    parser.add_argument('servers', nargs='+')
     parser.add_argument('command')
     parser.add_argument('-s', '--sorted-output', action='store_true', default=False,
             help='Sort the output by the URI of each instance.  This will wait for all instances to finish before showing any output!')
@@ -46,6 +46,22 @@ def get_argparse_args(args=None):
             help='Hide server information on output.  This implies sorted.')
     parser.add_argument('--version', action='version', version='%(prog)s '+__version__)
     args, extra_args = parser.parse_known_args(args=args)
+
+    # Move any servers that start with a - to extra_args
+    new_servers = []
+    for i in args.servers:
+        if i.startswith('-'):
+            extra_args.append(i)
+        else:
+            new_servers.append(i)
+    args.servers = new_servers
+
+    # If the comand starts with a -, replace it with the last server and
+    # move the command to extra_args.
+    if args.command.startswith('-'):
+        extra_args.append(args.command)
+        args.command = args.servers.pop(-1)
+
     if args.quiet:
         args.sorted_output = True
     return (args, args.command, extra_args)
