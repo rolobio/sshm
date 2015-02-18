@@ -56,6 +56,10 @@ Specify a per-host port:
 
      $ sshm example1.com:123,example2.com,example4.com:78 "exit"
 
+Specify multiple groups of servers, the last positional argument is assumed to be the command.
+
+    $ sshm 192.168.0.1-20 example.com,mail[03-5].example.com "uptime"
+
 Format the command per-host:
 
      $ sshm example[1-3].com "echo {fqdn}"
@@ -68,3 +72,6 @@ Format the command per-host:
      Possible formatting variables:
           uri, fqdn, subdomain, num
 
+Any arguments not recognized by SSHM will be passed to ssh:
+
+    $ ssh example.com "ls" -o StrictHostKeyChecking=no
