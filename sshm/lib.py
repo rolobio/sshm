@@ -245,12 +245,13 @@ def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_
     This is a generator to facilitate using the results of each ssh command as
     they become available.
 
-    @param servers: A string containing the servers to execute "command" on via
+    @param servers: A list of strings or a string containing the servers to
+    execute "command" on via
         SSH.
         Examples:
-            'example.com'
-            'example[1-3].com'
-            'mail[1,3,8].example.com'
+            ['example.com']
+            ['example[1-3].com']
+            ['mail[1,3,8].example.com', 'example.com']
     @type servers: str
 
     @param command: A string containing the command to execute.
@@ -267,6 +268,8 @@ def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_
     @returns: A list containing (success, handle, message) from each method
         call.
     """
+    if type(servers) == str:
+        servers = [servers,]
     # Disable formatting when requested
     global disable_formatting
     disable_formatting = disable_formatting_var
@@ -288,12 +291,13 @@ def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_
     thread_num = 0
     # Only tell the thread to get stdin if there is some.
     if_stdin = True if stdin else False
-    for uri in uri_expansion(servers):
-        thread = threading.Thread(target=ssh, args=(thread_num, context, uri,
-            command, extra_arguments, if_stdin))
-        thread.start()
-        threads.append(thread)
-        thread_num += 1
+    for server_group in servers:
+        for uri in uri_expansion(server_group):
+            thread = threading.Thread(target=ssh, args=(thread_num, context, uri,
+                command, extra_arguments, if_stdin))
+            thread.start()
+            threads.append(thread)
+            thread_num += 1
 
     poller = zmq.Poller()
     poller.register(sink, zmq.POLLIN)
