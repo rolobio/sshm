@@ -33,7 +33,6 @@ def expand_ranges(to_expand):
             nums.append(single)
         if range_str:
             i, j = range_str.split('-')
-            print(i, j)
             # Create a string that will pad the integer with its current amount
             # of zeroes.
             # Example: if i is '03' the string will be '%0.2d'
