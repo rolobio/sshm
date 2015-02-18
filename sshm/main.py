@@ -95,7 +95,9 @@ def main():
         results = list(results)
         results = sorted(results, key=lambda x: x['uri'])
 
+    exit_code = 0
     for result in results:
+        exit_code = exit_code or result['return_code']
         if result.get('stdout') != None:
             _print_handling_newlines(result['uri'],
                     result['return_code'],
@@ -122,8 +124,7 @@ def main():
                     )
 
     # Exit with non-zero when there is a failure
-    if sum([r['return_code'] for r in results]):
-        sys.exit(1)
+    sys.exit(exit_code)
 
 
 if __name__ == '__main__':
