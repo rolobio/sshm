@@ -55,7 +55,6 @@ class TestFuncs(unittest.TestCase):
         # You can strip whitespace
         provided = ['-p', '-o UserKnownHostsFile=/dev/null', '-o StrictHostKeyChecking=no', 'example[1-3].com', 'exit']
         args, command, extra_args = get_argparse_args(provided)
-        print(args, command, extra_args)
         self.assertEqual(args.servers, ['example[1-3].com'])
         self.assertTrue(args.strip_whitespace)
         self.assertFalse(args.disable_formatting)

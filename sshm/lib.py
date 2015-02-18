@@ -16,19 +16,24 @@ _match_ranges = re.compile(r'(?:(\d+)(?:,|$))|(?:(\d+-\d+))')
 def expand_ranges(to_expand):
     """
     Convert a comma-seperated range of integers into a list. Keep any zero
-    padding the numbers may have.
+    padding the numbers may have.  If the provided string is just a -, then I
+    will return an entire range.
 
         Example: "1,4,07-10" to ['1', '4', '07', '08', '09', '10']
 
     @param to_expand: Expand this string into a list of integers.
     @type to_expand: str
     """
+    if to_expand == '-':
+        return [str(i) for i in range(0, 256)]
+
     nums = []
     for single, range_str in _match_ranges.findall(to_expand):
         if single:
             nums.append(single)
         if range_str:
             i, j = range_str.split('-')
+            print(i, j)
             # Create a string that will pad the integer with its current amount
             # of zeroes.
             # Example: if i is '03' the string will be '%0.2d'
