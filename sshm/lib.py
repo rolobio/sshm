@@ -56,7 +56,7 @@ def create_uri(user, target, port):
         return target
 
 
-_parse_uri = re.compile(r'(?:(\w+)@)?(?:(?:([a-zA-Z][\w.]+)(?:\[([\d,-]+)\])?([\w.]+)?)|([\d,.-]+))(?::(\d+))?,?')
+_parse_uri = re.compile(r'(?:(\w+)@)?(?:(?:([a-zA-Z][\w.-]+)(?:\[([\d,-]+)\])?([\w.]+)?)|([\d,.-]+))(?::(\d+))?,?')
 invalid_uris = ValueError('Invalid URIs provided!')
 
 def uri_expansion(input_str):
