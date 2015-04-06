@@ -56,8 +56,7 @@ def create_uri(user, target, port):
         return target
 
 
-_parse_uri = re.compile(r'(?:(\w+)@)?(?:(?:([a-zA-Z][\w.-]+)(?:\[([\d,-]+)\])?([\w.]+)?)|([\d,.-]+))(?::(\d+))?,?')
-invalid_uris = ValueError('Invalid URIs provided!')
+_parse_uri = re.compile(r'(?:(\w+)@)?(?:(?:([a-zA-Z][\w.-]+)(?:\[([\d,-]+)\])?([\w.]+)?)|((?:(?:(?:\d+-\d+)|(?:\d+,\d+)|(?:\d+)|(?:-))+\.){3}(?:(?:\d+-\d+)|(?:\d+,\d+)|(?:\d+)|(?:-)))(?=,|$|:))(?::(\d+))?,?')
 
 def uri_expansion(input_str):
     """
@@ -71,7 +70,7 @@ def uri_expansion(input_str):
     try:
         uris = _parse_uri.findall(input_str)
     except TypeError:
-        raise invalid_uris
+        raise ValueError('Unable to parse provided URIs')
 
     for uri in uris:
         user, prefix, range_str, suffix, ip_addr, port = uri
@@ -84,7 +83,7 @@ def uri_expansion(input_str):
         elif ip_addr:
             # Check the length of this IP address
             if ip_addr.count('.') != 3:
-                raise invalid_uris
+                raise ValueError('IP address "{}" does not have 4 octets'.format(ipaddr))
 
             if '-' in ip_addr or ',' in ip_addr:
                 # Expand any ranges in the octets
@@ -104,7 +103,7 @@ def uri_expansion(input_str):
 
     # Some targets must be specified
     if not new_uris:
-        raise invalid_uris
+        raise ValueError('No URIs found in "{}"'.format(input_str))
 
     return new_uris
 
