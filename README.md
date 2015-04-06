@@ -72,6 +72,14 @@ Format the command per-host:
      Possible formatting variables:
           uri, fqdn, subdomain, num
 
+Quiet SSH's error output:
+
+     $ sshm -u example.com "echo {subdomain}"
+
+     executes:
+          (ssh -q example.com echo example)
+
+
 Any arguments not recognized by SSHM will be passed to ssh:
 
     $ ssh example.com "ls" -o StrictHostKeyChecking=no

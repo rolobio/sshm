@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 # This is the official version of sshm
-__version__ = '1.4.1'
+__version__ = '1.5'
 
 __long_description__ = '''
     SSH Multi v%s. SSH into multiple machines at once.
@@ -16,7 +16,7 @@ __long_description__ = '''
         Verify which servers are accepting SSH connections:
             sshm example[1-5].com "exit"
 
-        Copy a file to several servers.  May not work for larger files.
+        Copy a file to several servers.  (Limited by your RAM size)
             cat some_file | sshm example[1-5].com "cat > some_file"
 
         Specify a per-host port:
@@ -32,5 +32,11 @@ __long_description__ = '''
 
             Possible formatting variables:
                 uri, fqdn, subdomain, num
+
+        Quiet SSH's error output:
+            sshm -u example.com "echo {subdomain}"
+
+            calls:
+                (ssh -q example.com echo example)
     ''' % (__version__)
 
