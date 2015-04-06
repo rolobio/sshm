@@ -83,7 +83,7 @@ def uri_expansion(input_str):
         elif ip_addr:
             # Check the length of this IP address
             if ip_addr.count('.') != 3:
-                raise ValueError('IP address "{}" does not have 4 octets'.format(ipaddr))
+                raise ValueError('IP address "{}" does not have 4 octets'.format(ip_addr))
 
             if '-' in ip_addr or ',' in ip_addr:
                 # Expand any ranges in the octets
