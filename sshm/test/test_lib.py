@@ -77,7 +77,8 @@ class TestFuncs(unittest.TestCase):
                 ]
 
         for provided in prov:
-            self.assertRaises(ValueError, lib.uri_expansion, provided)
+            gen = lib.uri_expansion(provided)
+            self.assertRaises(ValueError, list, gen)
 
 
     def test_expand_ranges(self):

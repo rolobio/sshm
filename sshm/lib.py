@@ -72,6 +72,7 @@ def uri_expansion(input_str):
     except TypeError:
         raise ValueError('Unable to parse provided URIs')
 
+    yielded_something = False
     for uri in uris:
         user, prefix, range_str, suffix, ip_addr, port = uri
 
@@ -79,7 +80,9 @@ def uri_expansion(input_str):
             # Expand the URL
             i = product([prefix,], expand_ranges(range_str), [suffix,])
             i = [''.join(iter(j)) for j in i]
-            new_uris.extend([create_uri(user, k, port) for k in i])
+            for k in i:
+                yielded_something = True
+                yield create_uri(user, k, port)
         elif ip_addr:
             if '-' in ip_addr or ',' in ip_addr:
                 # Expand any ranges in the octets
@@ -89,19 +92,21 @@ def uri_expansion(input_str):
                 # Join the octets back together with dots
                 l = ['.'.join(iter(k)) for k in j]
                 # Extend new_uris with the new URIs, conver them to a URI
-                new_uris.extend([create_uri(user, i, port) for i in l])
+                for i in l:
+                    yielded_something = True
+                    yield create_uri(user, i, port)
             else:
                 # No expansion necessary for IP
-                new_uris.append(create_uri(user, ip_addr, port))
+                yielded_something = True
+                yield create_uri(user, ip_addr, port)
         else:
             # No expansion necessary for URL
-            new_uris.append(create_uri(user, prefix+suffix, port))
+            yielded_something = True
+            yield create_uri(user, prefix+suffix, port)
 
     # Some targets must be specified
-    if not new_uris:
+    if not yielded_something:
         raise ValueError('No URIs found in "{}"'.format(input_str))
-
-    return new_uris
 
 
 def popen(cmd, stdin, stdout, stderr): # pragma: no cover
