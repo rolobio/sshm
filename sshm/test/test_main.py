@@ -86,6 +86,13 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(command, 'ls')
         self.assertEqual(extra_args, [])
 
+        # You can quiet SSH (passing -q to ssh) by using -u
+        provided = ['example.com', 'command', '-o Something', '-u']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, ['example.com',])
+        self.assertEqual(command, 'command')
+        self.assertEqual(extra_args, ['-q', '-o Something'])
+
 
     def test__print_handling_newlines(self):
         """
