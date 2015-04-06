@@ -66,7 +66,6 @@ def uri_expansion(input_str):
     @param input_str: The uris to expand
     @type input_str: str
     """
-    new_uris = []
     try:
         uris = _parse_uri.findall(input_str)
     except TypeError:
@@ -91,7 +90,6 @@ def uri_expansion(input_str):
                 j = product(x[0], x[1], x[2], x[3])
                 # Join the octets back together with dots
                 l = ['.'.join(iter(k)) for k in j]
-                # Extend new_uris with the new URIs, conver them to a URI
                 for i in l:
                     yielded_something = True
                     yield create_uri(user, i, port)
