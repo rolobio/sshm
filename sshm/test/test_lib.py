@@ -61,7 +61,7 @@ class TestFuncs(unittest.TestCase):
                 ]
 
         for provided, expected in prov_exp:
-            self.assertEqual(lib.uri_expansion(provided),
+            self.assertEqual(list(lib.uri_expansion(provided)),
                     expected)
 
     def test_invalid_uri_expansion(self):

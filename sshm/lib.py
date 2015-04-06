@@ -81,10 +81,6 @@ def uri_expansion(input_str):
             i = [''.join(iter(j)) for j in i]
             new_uris.extend([create_uri(user, k, port) for k in i])
         elif ip_addr:
-            # Check the length of this IP address
-            if ip_addr.count('.') != 3:
-                raise ValueError('IP address "{}" does not have 4 octets'.format(ip_addr))
-
             if '-' in ip_addr or ',' in ip_addr:
                 # Expand any ranges in the octets
                 x = [expand_ranges(i) for i in ip_addr.split('.')]
@@ -190,22 +186,21 @@ def ssh(thread_num, context, uri, command, extra_arguments, if_stdin=False):
             stderr=subprocess.PIPE,)
 
         # Write stdin to the PIPE until it is empty
-        if if_stdin:
-            while True:
-                stdin_sock.send_pyobj(thread_num)
-                chunk = stdin_sock.recv_pyobj()
-                # If the chunk is None, the stdin is empty
-                if chunk == None:
+        while if_stdin:
+            stdin_sock.send_pyobj(thread_num)
+            chunk = stdin_sock.recv_pyobj()
+            # If the chunk is None, the stdin is empty
+            if chunk == None:
+                break
+            # Continually attempt to send the chunk while the process is alive
+            while proc.poll() == None:
+                try:
+                    proc.stdin.write(chunk)
+                    # successfully sent the chunk, get the next one
                     break
-                # Continually attempt to send the chunk while the process is alive
-                while proc.poll() == None:
-                    try:
-                        proc.stdin.write(chunk)
-                        # successfully sent the chunk, get the next one
-                        break
-                    except IOError: # pragma: no cover not a predictable error
-                        # Temporary error, attempt to send the chunk again
-                        pass
+                except IOError: # pragma: no cover not a predictable error
+                    # Temporary error, attempt to send the chunk again
+                    pass
 
         # Get the output
         stdout, stderr = proc.communicate()
