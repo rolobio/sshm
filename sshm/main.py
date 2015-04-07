@@ -46,6 +46,8 @@ def get_argparse_args(args=None):
             help='Hide server information on output.  This implies sorted.')
     parser.add_argument('-u', '--ssh-quiet', action='store_true', default=False,
             help='Pass -q to the SSH command to quiet its output.')
+    parser.add_argument('-w', '--workers', type=int, default=20,
+            help='The maximum number of simultaneous SSH connections.')
     parser.add_argument('--version', action='version', version='%(prog)s '+__version__)
     args, extra_args = parser.parse_known_args(args=args)
 
@@ -111,7 +113,7 @@ def main():
         stdin = None
 
     # Perform the command on each server, print the results to stdout.
-    results = sshm(args.servers, command, extra_arguments, stdin, args.disable_formatting)
+    results = sshm(args.servers, command, extra_arguments, stdin, args.disable_formatting, args.workers)
     # If a sorted output is requested, gather all results before output.
     if args.sorted_output:
         results = list(results)
