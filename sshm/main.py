@@ -119,7 +119,7 @@ def main():
 
     exit_code = 0
     for result in results:
-        exit_code = exit_code or result['return_code']
+        exit_code = exit_code or result.get('return_code')
         if result.get('stdout') != None:
             _print_handling_newlines(result['uri'],
                     result['return_code'],
