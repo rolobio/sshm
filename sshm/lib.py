@@ -238,7 +238,7 @@ def ssh(thread_num, context, uri, command, extra_arguments, if_stdin=False):
 
 CHUNK_SIZE = 65536
 
-def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_var=False):
+def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_var=False, max_workers=5):
     """
     SSH into multiple servers and execute "command". Pass stdin to these ssh
     handles.
@@ -287,40 +287,58 @@ def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_
     if 'buffer' in dir(stdin): # pragma: no cover version specific
         stdin = stdin.buffer
 
-    # Start each SSH connection in it's own thread
-    threads = []
-    thread_num = 0
     # Only tell the thread to get stdin if there is some.
     if_stdin = True if stdin else False
-    for server_group in servers:
-        for uri in uri_expansion(server_group):
-            thread = threading.Thread(target=ssh, args=(thread_num, context, uri,
-                command, extra_arguments, if_stdin))
-            thread.start()
-            threads.append(thread)
-            thread_num += 1
 
+    # These are the sockets used to communicate with a thread
     poller = zmq.Poller()
     poller.register(sink, zmq.POLLIN)
     poller.register(stdin_sock, zmq.POLLIN)
 
     # Report any results that have been returned and send STDIN in chunks
     # as fast as the threads can receive it.
-    completed_threads = 0
-    stdin_queue = dict(zip(range(len(threads)), [1 for i in range(len(threads))]))
+    stdin_queue = {}
     stdin_chunks = {}
     chunk_count = 1
-    while completed_threads != len(threads):
+    # Start each SSH connection in it's own thread
+    threads = {}
+    thread_num = 0
+    # Expand the provided URIs using a generator, this allows for extremely
+    # large server specifications.
+    uri_gen = uri_expansion(servers.pop(0))
+    next_uri = next(uri_gen)
+    while next_uri or threads:
+        # Start a new thread if there are any URIs left
+        while next_uri and len(threads) < max_workers:
+            thread = threading.Thread(target=ssh, args=(thread_num, context,
+                next_uri, command, extra_arguments, if_stdin))
+            thread.start()
+            threads[thread_num] = thread
+            thread_num += 1
+            try:
+                next_uri = next(uri_gen)
+            except StopIteration:
+                # No more URIs in server group, try the next group
+                try:
+                    uri_gen = uri_expansion(servers.pop(0))
+                    next_uri = next(uri_gen)
+                except IndexError:
+                    # No more server groups
+                    next_uri = None
+
         socks = dict(poller.poll())
         if socks.get(sink) == zmq.POLLIN:
             # A thread has finished, yield the results
             results = sink.recv_pyobj()
-            completed_threads += 1
             yield results
             threads[results['thread_num']].join()
+            del threads[results['thread_num']]
         elif socks.get(stdin_sock) == zmq.POLLIN:
             # A thread requests it's stdin, give it it's next chunk.
             thread_num = stdin_sock.recv_pyobj()
+            # Start each thread at the beginning of the STDIN
+            if thread_num not in stdin_queue:
+                stdin_queue[thread_num] = 1
             # Read the next chunk to memory if it hasn't been read in yet
             if stdin_queue[thread_num] not in stdin_chunks:
                 chunk = stdin.read(CHUNK_SIZE)
@@ -334,12 +352,6 @@ def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_
             stdin_sock.send_pyobj(chunk)
             # Set the next chunk
             stdin_queue[thread_num] += 1
-
-            # Delete old chunks if they are unused
-            min_needed = min([stdin_queue[i] for i in stdin_queue])
-            min_in_memory = min(stdin_chunks)
-            if min_needed > min_in_memory:
-                del stdin_chunks[min_in_memory]
 
     # Cleanup
     sink.close()
