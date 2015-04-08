@@ -43,7 +43,7 @@ def get_argparse_args(args=None):
     parser.add_argument('-d', '--disable-formatting', action='store_true', default=False,
             help='Disable command formatting.')
     parser.add_argument('-u', '--quiet', action='store_true', default=False,
-            help='Hide server information on output.  This implies sorted.')
+            help="Hide SSM's server information on output (this implies sorted).")
     parser.add_argument('--version', action='version', version='%(prog)s '+__version__)
     args, extra_args = parser.parse_known_args(args=args)
 
