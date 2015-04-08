@@ -98,7 +98,7 @@ class TestFuncs(unittest.TestCase):
         ]
 
         for range_str, expected in tests:
-            output = lib.expand_ranges(range_str)
+            output = list(lib.expand_ranges(range_str))
             self.assertEqual(expected, output)
 
 
@@ -290,7 +290,8 @@ class Test_sshm(unittest.TestCase):
         self.addCleanup(setattr, lib, 'popen', lib.popen)
         lib.popen = sub.popen
 
-        results_list = list(lib.sshm('example[01-03].com', 'exit'))
+        results_list = list(lib.sshm(['example01.com', 'example[02-03].com'],
+            'exit'))
         self.assertEqual(3, len(results_list))
         self.assertEqual(3,
                 len(set([r['uri'] for r in results_list]))
