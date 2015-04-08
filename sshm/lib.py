@@ -25,12 +25,12 @@ def expand_ranges(to_expand):
     @type to_expand: str
     """
     if to_expand == '-':
-        return [str(i) for i in range(0, 256)]
+        for i in range(0, 256):
+            yield str(i)
 
-    nums = []
     for single, range_str in _match_ranges.findall(to_expand):
         if single:
-            nums.append(single)
+            yield single
         if range_str:
             i, j = range_str.split('-')
             # Create a string that will pad the integer with its current amount
@@ -38,8 +38,7 @@ def expand_ranges(to_expand):
             # Example: if i is '03' the string will be '%0.2d'
             padding = '%'+'0.%d' % len(i) +'d'
             for k in range(int(i), int(j)+1):
-                nums.append(padding % k)
-    return nums
+                yield padding % k
 
 
 def create_uri(user, target, port):
