@@ -42,12 +42,8 @@ def get_argparse_args(args=None):
             help='Remove any whitespace surrounding the output of each instance.')
     parser.add_argument('-d', '--disable-formatting', action='store_true', default=False,
             help='Disable command formatting.')
-    parser.add_argument('-q', '--quiet', action='store_true', default=False,
-            help='Hide server information on output.  This implies sorted.')
-    parser.add_argument('-u', '--ssh-quiet', action='store_true', default=False,
-            help='Pass -q to the SSH command to quiet its output.')
-    parser.add_argument('-w', '--workers', type=int, default=20,
-            help='The maximum number of simultaneous SSH connections.')
+    parser.add_argument('-u', '--quiet', action='store_true', default=False,
+            help="Hide SSHM's server information on output (this implies sorted).")
     parser.add_argument('--version', action='version', version='%(prog)s '+__version__)
     args, extra_args = parser.parse_known_args(args=args)
 
@@ -69,9 +65,6 @@ def get_argparse_args(args=None):
     if args.quiet:
         args.sorted_output = True
 
-    # Pass -q to SSH command
-    if args.ssh_quiet:
-        extra_args.insert(0, '-q')
     return (args, args.command, extra_args)
 
 
