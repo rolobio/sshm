@@ -86,6 +86,14 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(command, 'ls')
         self.assertEqual(extra_args, [])
 
+        # You can specify the amount of workers
+        provided = ['example.com', 'ls', '-w 5']
+        args, command, extra_args = get_argparse_args(provided)
+        self.assertEqual(args.servers, ['example.com',])
+        self.assertEqual(command, 'ls')
+        self.assertEqual(args.workers, 5)
+        self.assertEqual(extra_args, [])
+
 
     def test__print_handling_newlines(self):
         """
