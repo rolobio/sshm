@@ -8,6 +8,7 @@ from traceback import format_exc
 
 __all__ = ['sshm', 'uri_expansion']
 disable_formatting = False
+default_workers = 20
 
 
 # This is used to parse a range string
@@ -237,7 +238,7 @@ def ssh(thread_num, context, uri, command, extra_arguments, if_stdin=False):
 
 CHUNK_SIZE = 65536
 
-def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_var=False, max_workers=5):
+def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_var=False, workers=default_workers):
     """
     SSH into multiple servers and execute "command". Pass stdin to these ssh
     handles.
@@ -264,6 +265,9 @@ def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_
     @param stdin: A file object that will be passed to each subproccess
         instance.
     @type stdin: file
+
+    @param workers: The max amount of concurrent SSH connections.
+    @type workers: int
 
     @returns: A list containing (success, handle, message) from each method
         call.
@@ -308,7 +312,7 @@ def sshm(servers, command, extra_arguments=None, stdin=None, disable_formatting_
     next_uri = next(uri_gen)
     while next_uri or threads:
         # Start a new thread if there are any URIs left
-        while next_uri and len(threads) < max_workers:
+        while next_uri and len(threads) < workers:
             thread = threading.Thread(target=ssh, args=(thread_num, context,
                 next_uri, command, extra_arguments, if_stdin))
             thread.start()

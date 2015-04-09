@@ -44,6 +44,8 @@ def get_argparse_args(args=None):
             help='Disable command formatting.')
     parser.add_argument('-u', '--quiet', action='store_true', default=False,
             help="Hide SSHM's server information on output (this implies sorted).")
+    parser.add_argument('-w', '--workers', type=int, default=20,
+            help="Limit the amount of concurrent SSH connections.")
     parser.add_argument('--version', action='version', version='%(prog)s '+__version__)
     args, extra_args = parser.parse_known_args(args=args)
 
