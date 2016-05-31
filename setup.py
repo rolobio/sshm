@@ -16,6 +16,7 @@ config = {
     'long_description':__long_description__,
     'install_requires': [
         'pyzmq',
+        'netaddr',
         ],
     'classifiers':[
         "Development Status :: 5 - Production/Stable",
