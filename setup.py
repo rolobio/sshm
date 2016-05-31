@@ -1,5 +1,6 @@
 from setuptools import setup
 from sshm._info import __version__, __long_description__
+from sys import version_info
 
 config = {
     'name':'sshm',
@@ -16,7 +17,6 @@ config = {
     'long_description':__long_description__,
     'install_requires': [
         'pyzmq',
-        'netaddr',
         ],
     'classifiers':[
         "Development Status :: 5 - Production/Stable",
@@ -30,6 +30,11 @@ config = {
             ]
         },
     }
+
+if version_info.major != 3 and version_info.minor != 2:
+    # Only require netaddr when version is not 3.2, as its not supported
+    # under 3.2
+    config['install_requires'].append('netaddr')
 
 setup(**config)
 

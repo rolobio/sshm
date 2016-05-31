@@ -1,11 +1,15 @@
 #! /usr/bin/env python3
 from itertools import product
-from netaddr import IPNetwork
 from traceback import format_exc
 import re
 import subprocess
 import threading
 import zmq
+try:
+    from netaddr import IPNetwork
+except ImportError:
+    # netaddr doesn't support python 3.2, CIDR won't work in that version
+    pass
 
 __all__ = ['sshm', 'uri_expansion']
 disable_formatting = False
@@ -86,8 +90,11 @@ def uri_expansion(input_str):
         elif ip_addr:
             if subnet:
                 yielded_something = True
-                for i in IPNetwork(ip_addr+subnet):
-                    yield i
+                try:
+                    for i in IPNetwork(ip_addr+subnet):
+                        yield i
+                except NameError:
+                    raise ValueError('CIDR notation not supported under Python 3.2, please upgrade')
             elif '-' in ip_addr or ',' in ip_addr:
                 # Expand any ranges in the octets
                 x = [expand_ranges(i) for i in ip_addr.split('.')]

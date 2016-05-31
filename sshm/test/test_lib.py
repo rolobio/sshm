@@ -6,7 +6,11 @@ command.
 from sshm import lib
 
 from mock import MagicMock
-from netaddr import IPNetwork
+try:
+    from netaddr import IPNetwork
+except ImportError:
+    # netaddr doesn't support python 3.2, CIDR won't work in that version
+    pass
 import unittest
 import zmq
 
