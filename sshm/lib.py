@@ -1,10 +1,11 @@
 #! /usr/bin/env python3
+from itertools import product
+from netaddr import IPNetwork
+from traceback import format_exc
 import re
 import subprocess
 import threading
 import zmq
-from itertools import product
-from traceback import format_exc
 
 __all__ = ['sshm', 'uri_expansion']
 disable_formatting = False
@@ -56,7 +57,7 @@ def create_uri(user, target, port):
         return target
 
 
-_parse_uri = re.compile(r'(?:(\w+)@)?(?:(?:([a-zA-Z][\w.-]+)(?:\[([\d,-]+)\])?([\w.]+)?)|((?:(?:(?:\d+-\d+)|(?:\d+,\d+)|(?:\d+)|(?:-))+\.){3}(?:(?:\d+-\d+)|(?:\d+,\d+)|(?:\d+)|(?:-)))(?=,|$|:))(?::(\d+))?,?')
+_parse_uri = re.compile(r'(?:(\w+)@)?(?:(?:([a-zA-Z][\w.-]+)(?:\[([\d,-]+)\])?([\w.]+)?)|((?:(?:(?:\d+-\d+)|(?:\d+,\d+)|(?:\d+)|(?:-))+\.){3}(?:(?:\d+-\d+)|(?:\d+,\d+)|(?:\d+)|(?:-)))(\/\d\d)?)(?=,|$|:)(?::(\d+))?,?')
 
 def uri_expansion(input_str):
     """
@@ -73,7 +74,7 @@ def uri_expansion(input_str):
 
     yielded_something = False
     for uri in uris:
-        user, prefix, range_str, suffix, ip_addr, port = uri
+        user, prefix, range_str, suffix, ip_addr, subnet, port = uri
 
         if (prefix or suffix) and range_str:
             # Expand the URL
@@ -83,7 +84,11 @@ def uri_expansion(input_str):
                 yielded_something = True
                 yield create_uri(user, k, port)
         elif ip_addr:
-            if '-' in ip_addr or ',' in ip_addr:
+            if subnet:
+                yielded_something = True
+                for i in IPNetwork(ip_addr+subnet):
+                    yield i
+            elif '-' in ip_addr or ',' in ip_addr:
                 # Expand any ranges in the octets
                 x = [expand_ranges(i) for i in ip_addr.split('.')]
                 # Create all products for each expanded octet

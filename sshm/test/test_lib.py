@@ -6,6 +6,7 @@ command.
 from sshm import lib
 
 from mock import MagicMock
+from netaddr import IPNetwork
 import unittest
 import zmq
 
@@ -58,6 +59,8 @@ class TestFuncs(unittest.TestCase):
                 ('10.1.1.1,10.1.1.2', ['10.1.1.1', '10.1.1.2']),
                 ('10.1.1.1,3,10.1.1.5', ['10.1.1.1', '10.1.1.3', '10.1.1.5']),
                 ('10.1.1.1,3,10.1.1.5,root@example[01-2].com,10-11.1.1.1-5', ['10.1.1.1', '10.1.1.3', '10.1.1.5', 'root@example01.com', 'root@example02.com', '10.1.1.1', '10.1.1.2', '10.1.1.3', '10.1.1.4', '10.1.1.5', '11.1.1.1', '11.1.1.2', '11.1.1.3', '11.1.1.4', '11.1.1.5']),
+                ('10.0.0.0/24', list(IPNetwork('10.0.0.0/24'))),
+                ('10.0.0.0/24,example[8-10].foo', list(IPNetwork('10.0.0.0/24'))+['example8.foo', 'example9.foo', 'example10.foo']),
                 ]
 
         for provided, expected in prov_exp:
