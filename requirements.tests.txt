@@ -1,6 +1,7 @@
 coverage
 coveralls
+green
 mock
+netaddr
 pyflakes
 pyzmq
-green
