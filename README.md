@@ -72,7 +72,7 @@ Format the command per-host:
      Possible formatting variables:
           uri, fqdn, subdomain, num
 
-Quiet SSH's error output:
+Quiet SSH's error output (-q is passed to the SSH command):
 
      $ sshm -u example.com "echo {subdomain}"
 
@@ -83,3 +83,7 @@ Quiet SSH's error output:
 Any arguments not recognized by SSHM will be passed to ssh:
 
     $ ssh example.com "ls" -o StrictHostKeyChecking=no
+
+Attempt to get hostnames of the entire 10.0.0.0 subnet, do not store keys found, do not ask about keys found, do not prompt for password, timeout connection after 1 second, tell ssh to not display any error output. This command will take several days, and is not secure because all keys are ignored:
+
+    $ sshm -q 10.0-255.0-255.0-255 "hostname" -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no -oBatchMode=yes -oConnectTimeout=1
