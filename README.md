@@ -4,7 +4,6 @@
 [![Coverage Status](https://coveralls.io/repos/rolobio/sshm/badge.png)](https://coveralls.io/r/rolobio/sshm?branch=master)
 [![Version](http://img.shields.io/pypi/v/sshm.svg)](https://pypi.python.org/pypi/sshm/)
 [![Downloads](http://img.shields.io/pypi/dm/sshm.svg)](https://pypi.python.org/pypi/sshm/)
-[![License](https://pypip.in/license/sshm/badge.png)](https://gnu.org/licenses/gpl.html)
 
 SSH Multiple. SSH into multiple machines and execute a single command. Each ssh
 session will be executed at once in their own threads. Stdin will be copied to
